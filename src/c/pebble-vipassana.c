@@ -27,7 +27,6 @@ static TextLayer *s_location_layer;
 static TextLayer *s_next_layer;
 static TextLayer *s_next_location_layer;
 static TextLayer *s_countdown_layer;
-static TextLayer *s_mode_layer;
 
 static Settings s_settings;
 static BatteryChargeState s_battery_state;
@@ -41,7 +40,6 @@ static char s_location_buffer[48];
 static char s_next_buffer[48];
 static char s_next_location_buffer[48];
 static char s_countdown_buffer[32];
-static char s_mode_buffer[32];
 
 static const bool k_settings_only =
 #ifdef SETTINGS_ONLY
@@ -51,6 +49,26 @@ static const bool k_settings_only =
 #endif
 static bool s_services_started = false;
 static bool s_message_open = false;
+
+// Layout configuration. Adjust these to tune line positions and spacing.
+static const int kTimeY = 0;
+static const int kTimeH = 30;
+static const int kBatteryY = 30;
+static const int kBatteryH = 16;
+static const int kDayY = 46;
+static const int kDayH = 16;
+static const int kSessionY = 62;
+static const int kSessionH = 24;
+static const int kMeditationY = 86;
+static const int kMeditationH = 16;
+static const int kLocationY = 102;
+static const int kLocationH = 16;
+static const int kNextY = 118;
+static const int kNextH = 16;
+static const int kNextLocationY = 134;
+static const int kNextLocationH = 16;
+static const int kCountdownY = 150;
+static const int kCountdownH = 16;
 
 static int minutes_from_tm(const struct tm *time_parts) {
   return time_parts->tm_hour * 60 + time_parts->tm_min;
@@ -279,15 +297,14 @@ static void update_display(struct tm *tick_time) {
       snprintf(s_countdown_buffer, sizeof(s_countdown_buffer), "%s soon", schedule_kind_label(target_kind));
     }
     text_layer_set_text(s_countdown_layer, s_countdown_buffer);
-    text_layer_set_text(s_mode_layer, "Course");
   } else if (mode == MODE_SERVICE) {
     int minutes_until_course = (int)((course_start - now) / 60);
     format_duration_hm(minutes_until_course, s_time_buffer, sizeof(s_time_buffer));
     text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];
     settings_datetime_to_iso(s_settings.course_start, course_buffer, sizeof(course_buffer));
-    snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Service Period");
-    text_layer_set_text(s_mode_layer, s_mode_buffer);
+    snprintf(s_day_buffer, sizeof(s_day_buffer), "Service period");
+    text_layer_set_text(s_day_layer, s_day_buffer);
     snprintf(s_day_buffer, sizeof(s_day_buffer), "Course in %d days", days_until);
     text_layer_set_text(s_day_layer, s_day_buffer);
     text_layer_set_text(s_session_layer, "Service in progress");
@@ -303,8 +320,8 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_time_layer, s_time_buffer);
     char service_buffer[24];
     settings_datetime_to_iso(s_settings.service_start, service_buffer, sizeof(service_buffer));
-    snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Pre-service");
-    text_layer_set_text(s_mode_layer, s_mode_buffer);
+    snprintf(s_day_buffer, sizeof(s_day_buffer), "Pre-service");
+    text_layer_set_text(s_day_layer, s_day_buffer);
     snprintf(s_day_buffer, sizeof(s_day_buffer), "Service in %d days", days_until);
     text_layer_set_text(s_day_layer, s_day_buffer);
     text_layer_set_text(s_session_layer, "Awaiting service");
@@ -320,8 +337,8 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];
     settings_datetime_to_iso(s_settings.course_start, course_buffer, sizeof(course_buffer));
-    snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Pre-course");
-    text_layer_set_text(s_mode_layer, s_mode_buffer);
+    snprintf(s_day_buffer, sizeof(s_day_buffer), "Pre-course");
+    text_layer_set_text(s_day_layer, s_day_buffer);
     snprintf(s_day_buffer, sizeof(s_day_buffer), "Course in %d days", days_until);
     text_layer_set_text(s_day_layer, s_day_buffer);
     text_layer_set_text(s_session_layer, "Awaiting course");
@@ -333,7 +350,7 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_countdown_layer, "");
   } else {
     text_layer_set_text(s_time_layer, "--:--");
-    text_layer_set_text(s_mode_layer, "Update dates");
+    text_layer_set_text(s_day_layer, "Update dates");
     text_layer_set_text(s_day_layer, "Course complete");
     text_layer_set_text(s_session_layer, "Open settings");
     text_layer_set_text(s_next_layer, "");
@@ -415,7 +432,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
 static TextLayer *create_label(GRect frame, GTextAlignment alignment, GFont font) {
   TextLayer *layer = text_layer_create(frame);
   text_layer_set_background_color(layer, GColorClear);
-  text_layer_set_text_color(layer, GColorWhite);
+  text_layer_set_text_color(layer, GColorBlack);
   text_layer_set_text_alignment(layer, alignment);
   text_layer_set_font(layer, font);
   return layer;
@@ -426,50 +443,45 @@ static void main_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   s_time_layer = create_label(GRect(0, 2, bounds.size.w, 36), GTextAlignmentCenter,
-                              fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
+                              fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
 
-  s_battery_layer = create_label(GRect(0, 38, bounds.size.w, 18), GTextAlignmentCenter,
-                                 fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_battery_layer = create_label(GRect(0, kBatteryY, bounds.size.w, kBatteryH), GTextAlignmentCenter,
+                                 fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_battery_layer));
 
-  s_mode_layer = create_label(GRect(0, 56, bounds.size.w, 18), GTextAlignmentCenter,
-                              fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-  layer_add_child(window_layer, text_layer_get_layer(s_mode_layer));
-
-  s_day_layer = create_label(GRect(0, 74, bounds.size.w, 20), GTextAlignmentCenter,
-                             fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_day_layer = create_label(GRect(0, kDayY, bounds.size.w, kDayH), GTextAlignmentCenter,
+                             fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_day_layer));
 
-  s_session_layer = create_label(GRect(4, 96, bounds.size.w - 8, 26), GTextAlignmentCenter,
+  s_session_layer = create_label(GRect(4, kSessionY, bounds.size.w - 8, kSessionH), GTextAlignmentCenter,
                                  fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_session_layer));
 
-  s_meditation_layer = create_label(GRect(4, 120, bounds.size.w - 8, 20), GTextAlignmentCenter,
-                                    fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_meditation_layer = create_label(GRect(4, kMeditationY, bounds.size.w - 8, kMeditationH),
+                                    GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_meditation_layer));
 
-  s_location_layer = create_label(GRect(4, 140, bounds.size.w - 8, 20), GTextAlignmentCenter,
-                                  fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_location_layer = create_label(GRect(4, kLocationY, bounds.size.w - 8, kLocationH),
+                                  GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_location_layer));
 
-  s_next_layer = create_label(GRect(4, 160, bounds.size.w - 8, 20), GTextAlignmentCenter,
-                              fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_next_layer = create_label(GRect(4, kNextY, bounds.size.w - 8, kNextH),
+                              GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_next_layer));
 
-  s_next_location_layer = create_label(GRect(4, 178, bounds.size.w - 8, 20), GTextAlignmentCenter,
-                                       fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_next_location_layer = create_label(GRect(4, kNextLocationY, bounds.size.w - 8, kNextLocationH),
+                                       GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_next_location_layer));
 
-  s_countdown_layer = create_label(GRect(4, 196, bounds.size.w - 8, 20), GTextAlignmentCenter,
-                                   fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_countdown_layer = create_label(GRect(4, kCountdownY, bounds.size.w - 8, kCountdownH),
+                                   GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   layer_add_child(window_layer, text_layer_get_layer(s_countdown_layer));
 }
 
 static void main_window_unload(Window *window) {
   text_layer_destroy(s_time_layer);
   text_layer_destroy(s_battery_layer);
-  text_layer_destroy(s_mode_layer);
   text_layer_destroy(s_day_layer);
   text_layer_destroy(s_session_layer);
   text_layer_destroy(s_meditation_layer);
@@ -489,7 +501,7 @@ static void init(void) {
   }
 
   s_main_window = window_create();
-  window_set_background_color(s_main_window, GColorBlack);
+  window_set_background_color(s_main_window, GColorWhite);
   window_set_window_handlers(s_main_window, (WindowHandlers){
                                                .load = main_window_load,
                                                .unload = main_window_unload,
