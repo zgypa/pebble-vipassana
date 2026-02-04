@@ -4,6 +4,7 @@
 .pebble-sdk/
 .pebble-shims/
 .venv/
+.lock-waf*
 build/
 dist/
 pebble.log
