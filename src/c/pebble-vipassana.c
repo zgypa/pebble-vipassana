@@ -196,9 +196,6 @@ static void update_battery(void) {
 }
 
 static void update_display(struct tm *tick_time) {
-  strftime(s_time_buffer, sizeof(s_time_buffer), "%H:%M", tick_time);
-  text_layer_set_text(s_time_layer, s_time_buffer);
-
   update_battery();
 
   time_t now = mktime(tick_time);
@@ -248,6 +245,8 @@ static void update_display(struct tm *tick_time) {
     }
     char duration_buffer[8];
     format_duration_hm(minutes_until_next, duration_buffer, sizeof(duration_buffer));
+    snprintf(s_time_buffer, sizeof(s_time_buffer), "%s", duration_buffer);
+    text_layer_set_text(s_time_layer, s_time_buffer);
     snprintf(s_next_buffer, sizeof(s_next_buffer), "Next in %s %s", duration_buffer, next->label);
     text_layer_set_text(s_next_layer, s_next_buffer);
 
@@ -282,6 +281,9 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_countdown_layer, s_countdown_buffer);
     text_layer_set_text(s_mode_layer, "Course");
   } else if (mode == MODE_SERVICE) {
+    int minutes_until_course = (int)((course_start - now) / 60);
+    format_duration_hm(minutes_until_course, s_time_buffer, sizeof(s_time_buffer));
+    text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];
     settings_datetime_to_iso(s_settings.course_start, course_buffer, sizeof(course_buffer));
     snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Service Period");
@@ -296,6 +298,9 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_next_location_layer, "");
     text_layer_set_text(s_countdown_layer, "");
   } else if (mode == MODE_PRE_SERVICE) {
+    int minutes_until_service = (int)((service_start - now) / 60);
+    format_duration_hm(minutes_until_service, s_time_buffer, sizeof(s_time_buffer));
+    text_layer_set_text(s_time_layer, s_time_buffer);
     char service_buffer[24];
     settings_datetime_to_iso(s_settings.service_start, service_buffer, sizeof(service_buffer));
     snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Pre-service");
@@ -310,6 +315,9 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_next_location_layer, "");
     text_layer_set_text(s_countdown_layer, "");
   } else if (mode == MODE_PRE_COURSE) {
+    int minutes_until_course = (int)((course_start - now) / 60);
+    format_duration_hm(minutes_until_course, s_time_buffer, sizeof(s_time_buffer));
+    text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];
     settings_datetime_to_iso(s_settings.course_start, course_buffer, sizeof(course_buffer));
     snprintf(s_mode_buffer, sizeof(s_mode_buffer), "Pre-course");
@@ -324,6 +332,7 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_next_location_layer, "");
     text_layer_set_text(s_countdown_layer, "");
   } else {
+    text_layer_set_text(s_time_layer, "--:--");
     text_layer_set_text(s_mode_layer, "Update dates");
     text_layer_set_text(s_day_layer, "Course complete");
     text_layer_set_text(s_session_layer, "Open settings");
