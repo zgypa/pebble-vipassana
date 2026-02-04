@@ -39,3 +39,7 @@ else
   echo "pebble-tool not found; install with: uv tool install pebble-tool --python 3.13" >&2
   exit 1
 fi
+
+# Fix capabilities array to ensure Settings button appears in mobile app
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python3 "$script_dir/fix-capabilities.py"

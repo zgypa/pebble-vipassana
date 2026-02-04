@@ -169,4 +169,10 @@ Pebble.addEventListener('ready', function() {
   var message = {};
   message[keys.REQUEST_SYNC] = 1;
   Pebble.sendAppMessage(message);
+
+  var courseStart = getStored('courseStart', '');
+  var serviceStart = getStored('serviceStart', '');
+  if (!courseStart || !serviceStart) {
+    setTimeout(openConfig, 300);
+  }
 });
