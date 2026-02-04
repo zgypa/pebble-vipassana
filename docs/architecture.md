@@ -94,6 +94,31 @@ Each course is composed of day types. For example, on a regular 10-day course:
 
 Longer courses extend these sequences. Each day type has separate schedules for Students and Servers.
 
+## Adding a New Course Type
+
+Follow this checklist when introducing a new course (e.g., Satipatthana, 20-day):
+
+1. **Add enum value**
+   - Update `CourseType` in `src/c/schedule.h`.
+
+2. **Define day-type sequence**
+   - Extend `schedule_get_day_type()` in `src/c/schedule.c` to map day numbers to `DayType` for the new course.
+   - Keep day 0 and day 11 semantics consistent with existing behavior if the course includes arrival/departure.
+
+3. **Provide day-type schedules**
+   - Add `k_student_daytype_*` and `k_server_daytype_*` tables for any new day types.
+   - If a day type reuses an existing timetable, map it directly in the day-type table.
+
+4. **Wire the day-type table**
+   - Update the `k_student_table` and `k_server_table` entries in `schedule_get_day()` to include the new course type.
+
+5. **Expose in settings**
+   - Add the new course type label to the phone config UI in `src/pkjs/index.js`.
+   - Ensure the incoming AppMessage mapping updates `s_settings.course_type`.
+
+6. **Test**
+   - Set the course type via the phone config page and verify day transitions and labels in the emulator.
+
 ## Timezone and Time Handling
 
 ### Design Decision: Wall-Clock Time Only
