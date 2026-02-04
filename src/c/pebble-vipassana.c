@@ -31,7 +31,7 @@ static TextLayer *s_countdown_layer;
 static Settings s_settings;
 static BatteryChargeState s_battery_state;
 
-static char s_time_buffer[8];
+static char s_time_buffer[16];
 static char s_battery_buffer[12];
 static char s_day_buffer[24];
 static char s_session_buffer[48];
@@ -52,23 +52,23 @@ static bool s_message_open = false;
 
 // Layout configuration. Adjust these to tune line positions and spacing.
 static const int kTimeY = 0;
-static const int kTimeH = 30;
-static const int kBatteryY = 30;
-static const int kBatteryH = 16;
-static const int kDayY = 46;
+static const int kTimeH = 34;
+static const int kBatteryY = 34;
+static const int kBatteryH = 24;
+static const int kDayY = 58;
 static const int kDayH = 16;
-static const int kSessionY = 62;
-static const int kSessionH = 24;
-static const int kMeditationY = 86;
-static const int kMeditationH = 16;
-static const int kLocationY = 102;
-static const int kLocationH = 16;
-static const int kNextY = 118;
-static const int kNextH = 16;
-static const int kNextLocationY = 134;
-static const int kNextLocationH = 16;
-static const int kCountdownY = 150;
-static const int kCountdownH = 16;
+static const int kSessionY = 74;
+static const int kSessionH = 64;
+static const int kMeditationY = 138;
+static const int kMeditationH = 0;
+static const int kLocationY = 138;
+static const int kLocationH = 0;
+static const int kNextY = 138;
+static const int kNextH = 20;
+static const int kNextLocationY = 158;
+static const int kNextLocationH = 0;
+static const int kCountdownY = 158;
+static const int kCountdownH = 0;
 
 static int minutes_from_tm(const struct tm *time_parts) {
   return time_parts->tm_hour * 60 + time_parts->tm_min;
@@ -82,6 +82,17 @@ static void format_duration_hm(int minutes, char *buffer, size_t buffer_size) {
   int hours = minutes / 60;
   int mins = minutes % 60;
   snprintf(buffer, buffer_size, "%02d:%02d", hours, mins);
+}
+
+static void format_duration_compact(int minutes, char *buffer, size_t buffer_size) {
+  if (minutes < 0) {
+    buffer[0] = '\0';
+    return;
+  }
+  int hours = minutes / 60;
+  int mins = minutes % 60;
+  // Drop leading zeros: "1:30" instead of "01:30"
+  snprintf(buffer, buffer_size, "%d:%02d", hours, mins);
 }
 
 // Calculate days between two calendar dates (ignoring time of day)
@@ -254,7 +265,7 @@ static int minutes_until_kind(const DaySchedule *schedule,
 
 static void update_battery(void) {
   s_battery_state = battery_state_service_peek();
-  snprintf(s_battery_buffer, sizeof(s_battery_buffer), "Battery %d%%", s_battery_state.charge_percent);
+  snprintf(s_battery_buffer, sizeof(s_battery_buffer), "%d%%", s_battery_state.charge_percent);
   text_layer_set_text(s_battery_layer, s_battery_buffer);
 }
 
@@ -282,8 +293,6 @@ static void update_display(struct tm *tick_time) {
                                           s_settings.course_start.month,
                                           s_settings.course_start.day);
     int days_left = 11 - course_day;
-    snprintf(s_day_buffer, sizeof(s_day_buffer), "Day %d / 11 (%d left)", course_day, days_left);
-    text_layer_set_text(s_day_layer, s_day_buffer);
 
     DayType day_type = schedule_get_day_type(s_settings.course_type, course_day);
     DaySchedule schedule = schedule_get_day(s_settings.course_type, s_settings.course_role, course_day);
@@ -299,23 +308,6 @@ static void update_display(struct tm *tick_time) {
     
     int next_index = schedule_next_index(&schedule, current_index);
 
-    const Activity *current = &schedule.activities[current_index];
-    snprintf(s_session_buffer, sizeof(s_session_buffer), "%s", current->label);
-    text_layer_set_text(s_session_layer, s_session_buffer);
-
-    if (current->kind == ACTIVITY_MEDITATION) {
-      MeditationType meditation = current->meditation != MEDITATION_NONE
-                                      ? current->meditation
-                                      : schedule_meditation_for_day(day_type);
-      snprintf(s_meditation_buffer, sizeof(s_meditation_buffer), "%s", schedule_meditation_label(meditation));
-      text_layer_set_text(s_meditation_layer, s_meditation_buffer);
-    } else {
-      text_layer_set_text(s_meditation_layer, "");
-    }
-
-    format_location(current, s_location_buffer, sizeof(s_location_buffer));
-    text_layer_set_text(s_location_layer, s_location_buffer);
-
     DaySchedule next_schedule = schedule;
     if (current_index == (int)schedule.count - 1) {
       next_schedule = schedule_get_day(s_settings.course_type, s_settings.course_role, course_day + 1);
@@ -325,42 +317,33 @@ static void update_display(struct tm *tick_time) {
     if (current_index == (int)schedule.count - 1 || minutes_until_next < 0) {
       minutes_until_next = (24 * 60 - minutes_now) + next->minutes;
     }
-    char duration_buffer[8];
-    format_duration_hm(minutes_until_next, duration_buffer, sizeof(duration_buffer));
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%s", duration_buffer);
+
+    // Top line: "X/Y H:MM" (no words, just numbers and time)
+    char duration_buffer[16];
+    format_duration_compact(minutes_until_next, duration_buffer, sizeof(duration_buffer));
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes until next: %d, Duration: '%s'", minutes_until_next, duration_buffer);
+    snprintf(s_time_buffer, sizeof(s_time_buffer), "%d/%d %s", course_day, days_left, duration_buffer);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Top line text: '%s'", s_time_buffer);
     text_layer_set_text(s_time_layer, s_time_buffer);
-    snprintf(s_next_buffer, sizeof(s_next_buffer), "Next in %s %s", duration_buffer, next->label);
+
+    // Day layer is now unused (day info moved to time layer)
+    text_layer_set_text(s_day_layer, "");
+
+    const Activity *current = &schedule.activities[current_index];
+    snprintf(s_session_buffer, sizeof(s_session_buffer), "%s", current->label);
+    text_layer_set_text(s_session_layer, s_session_buffer);
+
+    // Hide meditation type and location
+    text_layer_set_text(s_meditation_layer, "");
+    text_layer_set_text(s_location_layer, "");
+
+    // Next activity - just the name, no "Next in HH:MM"
+    snprintf(s_next_buffer, sizeof(s_next_buffer), "%s", next->label);
     text_layer_set_text(s_next_layer, s_next_buffer);
 
-    format_location(next, s_next_location_buffer, sizeof(s_next_location_buffer));
-    text_layer_set_text(s_next_location_layer, s_next_location_buffer);
-
-    ActivityKind target_kind = ACTIVITY_MEDITATION;
-    if (current->kind == ACTIVITY_MEDITATION) {
-      target_kind = ACTIVITY_REST;
-    } else if (current->kind == ACTIVITY_REST) {
-      target_kind = ACTIVITY_MEDITATION;
-    }
-
-    int minutes_until = minutes_until_kind(&schedule,
-                                           s_settings.course_type,
-                                           s_settings.course_role,
-                                           course_day,
-                                           current_index,
-                                           minutes_now,
-                                           target_kind);
-    if (minutes_until >= 0) {
-      char duration_buffer[8];
-      format_duration_hm(minutes_until, duration_buffer, sizeof(duration_buffer));
-      snprintf(s_countdown_buffer,
-               sizeof(s_countdown_buffer),
-               "%s in %s",
-               schedule_kind_label(target_kind),
-               duration_buffer);
-    } else {
-      snprintf(s_countdown_buffer, sizeof(s_countdown_buffer), "%s soon", schedule_kind_label(target_kind));
-    }
-    text_layer_set_text(s_countdown_layer, s_countdown_buffer);
+    // Hide next location and countdown
+    text_layer_set_text(s_next_location_layer, "");
+    text_layer_set_text(s_countdown_layer, "");
   } else if (mode == MODE_SERVICE) {
     // Calculate minutes until course start
     int days_diff = days_between_dates(now_year, now_month, now_day,
@@ -514,6 +497,7 @@ static TextLayer *create_label(GRect frame, GTextAlignment alignment, GFont font
   text_layer_set_text_color(layer, GColorBlack);
   text_layer_set_text_alignment(layer, alignment);
   text_layer_set_font(layer, font);
+  text_layer_set_overflow_mode(layer, GTextOverflowModeTrailingEllipsis);
   return layer;
 }
 
@@ -521,12 +505,12 @@ static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_time_layer = create_label(GRect(0, 2, bounds.size.w, 36), GTextAlignmentCenter,
-                              fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+  s_time_layer = create_label(GRect(0, kTimeY, bounds.size.w, kTimeH), GTextAlignmentCenter,
+                              fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
 
   s_battery_layer = create_label(GRect(0, kBatteryY, bounds.size.w, kBatteryH), GTextAlignmentCenter,
-                                 fonts_get_system_font(FONT_KEY_GOTHIC_14));
+                                 fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_battery_layer));
 
   s_day_layer = create_label(GRect(0, kDayY, bounds.size.w, kDayH), GTextAlignmentCenter,
@@ -534,28 +518,25 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_day_layer));
 
   s_session_layer = create_label(GRect(4, kSessionY, bounds.size.w - 8, kSessionH), GTextAlignmentCenter,
-                                 fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+                                 fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_session_layer));
 
+  // Meditation, location, next location, and countdown layers hidden (height 0)
   s_meditation_layer = create_label(GRect(4, kMeditationY, bounds.size.w - 8, kMeditationH),
                                     GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(window_layer, text_layer_get_layer(s_meditation_layer));
 
   s_location_layer = create_label(GRect(4, kLocationY, bounds.size.w - 8, kLocationH),
                                   GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(window_layer, text_layer_get_layer(s_location_layer));
 
   s_next_layer = create_label(GRect(4, kNextY, bounds.size.w - 8, kNextH),
-                              GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+                              GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_next_layer));
 
   s_next_location_layer = create_label(GRect(4, kNextLocationY, bounds.size.w - 8, kNextLocationH),
                                        GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(window_layer, text_layer_get_layer(s_next_location_layer));
 
   s_countdown_layer = create_label(GRect(4, kCountdownY, bounds.size.w - 8, kCountdownH),
                                    GTextAlignmentCenter, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(window_layer, text_layer_get_layer(s_countdown_layer));
 }
 
 static void main_window_unload(Window *window) {
