@@ -17,12 +17,16 @@ def configure(ctx):
 def build(ctx):
     ctx.load('pebble_sdk')
 
+    settings_only = os.environ.get('VIPASSANA_SETTINGS_ONLY') == '1'
+
     build_worker = os.path.exists('worker_src')
     binaries = []
 
     cached_env = ctx.env
     for platform in ctx.env.TARGET_PLATFORMS:
         ctx.env = ctx.all_envs[platform]
+        if settings_only:
+            ctx.env.CFLAGS = ctx.env.CFLAGS + ['-DSETTINGS_ONLY=1']
         ctx.set_group(ctx.env.PLATFORM_NAME)
         app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
         ctx.pbl_build(source=ctx.path.ant_glob('src/c/**/*.c'), target=app_elf, bin_type='app')

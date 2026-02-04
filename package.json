@@ -22,6 +22,17 @@
     "watchapp": {
       "watchface": true
     },
+    "messageKeys": [
+      "COURSE_START",
+      "SERVICE_START",
+      "COURSE_TYPE",
+      "COURSE_ROLE",
+      "ROOM",
+      "PAGODA_CELL",
+      "DINING_HALL",
+      "CUSHION",
+      "REQUEST_SYNC"
+    ],
     "resources": {
       "media": []
     }

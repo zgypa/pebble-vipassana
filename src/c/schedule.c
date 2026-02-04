@@ -1,219 +1,223 @@
 // Schedule engine implementation with student and server timetables.
 #include "schedule.h"
 
+#define ACT(time, text, kind) {time, text, kind, MEDITATION_NONE}
+#define ACT_MED(time, text) {time, text, ACTIVITY_MEDITATION, MEDITATION_NONE}
+#define ACT_METTA(time, text) {time, text, ACTIVITY_MEDITATION, MEDITATION_METTA}
+
 static const Activity k_student_day_minus_one[] = {
-  {5 * 60 + 55, "Chanting", ACTIVITY_OTHER},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {7 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {8 * 60 + 30, "Work Period", ACTIVITY_WORK},
-  {12 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {13 * 60 + 0, "Rest", ACTIVITY_REST},
-  {14 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {15 * 60 + 30, "Work Period", ACTIVITY_WORK},
-  {18 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {19 * 60 + 30, "Group Sitting", ACTIVITY_MEDITATION},
-  {20 * 60 + 30, "Metta", ACTIVITY_MEDITATION},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(5 * 60 + 55, "Chanting", ACTIVITY_OTHER),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT_MED(7 * 60 + 30, "Group sitting"),
+  ACT(8 * 60 + 30, "Work Period", ACTIVITY_WORK),
+  ACT(12 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(13 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT_MED(14 * 60 + 30, "Group sitting"),
+  ACT(15 * 60 + 30, "Work Period", ACTIVITY_WORK),
+  ACT(18 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_MED(19 * 60 + 30, "Group Sitting"),
+  ACT_METTA(20 * 60 + 30, "Metta"),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_student_day_zero[] = {
-  {5 * 60 + 55, "Chanting", ACTIVITY_OTHER},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {7 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {8 * 60 + 30, "Prepare Kitchen", ACTIVITY_WORK},
-  {10 * 60 + 30, "Prepare Registration", ACTIVITY_WORK},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {13 * 60 + 0, "Group Sitting", ACTIVITY_MEDITATION},
-  {14 * 60 + 0, "Registration", ACTIVITY_WORK},
-  {14 * 60 + 30, "Food Preparations", ACTIVITY_WORK},
-  {15 * 60 + 30, "Kitchen Meeting", ACTIVITY_INFO},
-  {18 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {19 * 60 + 0, "Information", ACTIVITY_INFO},
-  {20 * 60 + 0, "Course Starts", ACTIVITY_OTHER},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(5 * 60 + 55, "Chanting", ACTIVITY_OTHER),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT_MED(7 * 60 + 30, "Group sitting"),
+  ACT(8 * 60 + 30, "Prepare Kitchen", ACTIVITY_WORK),
+  ACT(10 * 60 + 30, "Prepare Registration", ACTIVITY_WORK),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT_MED(13 * 60 + 0, "Group Sitting"),
+  ACT(14 * 60 + 0, "Registration", ACTIVITY_WORK),
+  ACT(14 * 60 + 30, "Food Preparations", ACTIVITY_WORK),
+  ACT(15 * 60 + 30, "Kitchen Meeting", ACTIVITY_INFO),
+  ACT(18 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT(19 * 60 + 0, "Information", ACTIVITY_INFO),
+  ACT(20 * 60 + 0, "Course Starts", ACTIVITY_OTHER),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_student_day_one[] = {
-  {4 * 60 + 0, "Wake up", ACTIVITY_OTHER},
-  {4 * 60 + 30, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {8 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {9 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Interviews", ACTIVITY_INFO},
-  {13 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {14 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {15 * 60 + 30, "Meditation", ACTIVITY_MEDITATION},
-  {17 * 60 + 0, "Tea", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Group sitting", ACTIVITY_MEDITATION},
-  {21 * 60 + 0, "Questions", ACTIVITY_INFO},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(4 * 60 + 30, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT_MED(8 * 60 + 0, "Group sitting"),
+  ACT_MED(9 * 60 + 0, "Meditation"),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Interviews", ACTIVITY_INFO),
+  ACT_MED(13 * 60 + 0, "Meditation"),
+  ACT_MED(14 * 60 + 30, "Group sitting"),
+  ACT_MED(15 * 60 + 30, "Meditation"),
+  ACT(17 * 60 + 0, "Tea", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Group sitting"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT_MED(20 * 60 + 15, "Group sitting"),
+  ACT(21 * 60 + 0, "Questions", ACTIVITY_INFO),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_student_day_four[] = {
-  {4 * 60 + 0, "Wake up", ACTIVITY_OTHER},
-  {4 * 60 + 30, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {8 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {9 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Interviews", ACTIVITY_INFO},
-  {13 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {14 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {15 * 60 + 0, "Vipassana Teaching", ACTIVITY_INFO},
-  {17 * 60 + 0, "Tea", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Group sitting", ACTIVITY_MEDITATION},
-  {21 * 60 + 0, "Questions", ACTIVITY_INFO},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(4 * 60 + 30, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT_MED(8 * 60 + 0, "Group sitting"),
+  ACT_MED(9 * 60 + 0, "Meditation"),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Interviews", ACTIVITY_INFO),
+  ACT_MED(13 * 60 + 0, "Meditation"),
+  ACT_MED(14 * 60 + 0, "Group sitting"),
+  ACT(15 * 60 + 0, "Vipassana Teaching", ACTIVITY_INFO),
+  ACT(17 * 60 + 0, "Tea", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Group sitting"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT_MED(20 * 60 + 15, "Group sitting"),
+  ACT(21 * 60 + 0, "Questions", ACTIVITY_INFO),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_student_day_ten[] = {
-  {4 * 60 + 0, "Wake up", ACTIVITY_OTHER},
-  {4 * 60 + 30, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {8 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {9 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {10 * 60 + 10, "Noble Silence ends", ACTIVITY_INFO},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Interviews", ACTIVITY_INFO},
-  {13 * 60 + 0, "Rest", ACTIVITY_REST},
-  {14 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {15 * 60 + 50, "Rest", ACTIVITY_REST},
-  {16 * 60 + 0, "Information", ACTIVITY_INFO},
-  {17 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Group sitting", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Rest", ACTIVITY_REST},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(4 * 60 + 30, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT_MED(8 * 60 + 0, "Group sitting"),
+  ACT_MED(9 * 60 + 0, "Meditation"),
+  ACT(10 * 60 + 10, "Noble Silence ends", ACTIVITY_INFO),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Interviews", ACTIVITY_INFO),
+  ACT(13 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT_MED(14 * 60 + 30, "Group sitting"),
+  ACT(15 * 60 + 50, "Rest", ACTIVITY_REST),
+  ACT(16 * 60 + 0, "Information", ACTIVITY_INFO),
+  ACT(17 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Group sitting"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT(20 * 60 + 15, "Rest", ACTIVITY_REST),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_student_day_eleven[] = {
-  {4 * 60 + 0, "Wake up", ACTIVITY_OTHER},
-  {4 * 60 + 30, "Group Sitting", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Cleaning", ACTIVITY_WORK},
-  {7 * 60 + 0, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 30, "Cleaning", ACTIVITY_WORK},
-  {8 * 60 + 50, "Bus Leaves", ACTIVITY_OTHER},
-  {9 * 60 + 15, "Meeting", ACTIVITY_INFO},
-  {10 * 60 + 0, "Group Sitting", ACTIVITY_MEDITATION},
-  {11 * 60 + 0, "Work Period", ACTIVITY_WORK},
-  {12 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {13 * 60 + 0, "Rest", ACTIVITY_REST},
-  {14 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {15 * 60 + 30, "Work Period", ACTIVITY_WORK},
-  {18 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {19 * 60 + 30, "Group sitting", ACTIVITY_MEDITATION},
-  {20 * 60 + 30, "Metta", ACTIVITY_MEDITATION},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(4 * 60 + 30, "Group Sitting"),
+  ACT(6 * 60 + 30, "Cleaning", ACTIVITY_WORK),
+  ACT(7 * 60 + 0, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 30, "Cleaning", ACTIVITY_WORK),
+  ACT(8 * 60 + 50, "Bus Leaves", ACTIVITY_OTHER),
+  ACT(9 * 60 + 15, "Meeting", ACTIVITY_INFO),
+  ACT_MED(10 * 60 + 0, "Group Sitting"),
+  ACT(11 * 60 + 0, "Work Period", ACTIVITY_WORK),
+  ACT(12 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(13 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT_MED(14 * 60 + 30, "Group sitting"),
+  ACT(15 * 60 + 30, "Work Period", ACTIVITY_WORK),
+  ACT(18 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_MED(19 * 60 + 30, "Group sitting"),
+  ACT_METTA(20 * 60 + 30, "Metta"),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_minus_one[] = {
-  {5 * 60 + 30, "Wake up", ACTIVITY_OTHER},
-  {6 * 60 + 0, "Morning sit", ACTIVITY_MEDITATION},
-  {7 * 60 + 0, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 45, "Service Prep", ACTIVITY_WORK},
-  {9 * 60 + 0, "Work Period", ACTIVITY_WORK},
-  {12 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {13 * 60 + 0, "Rest", ACTIVITY_REST},
-  {14 * 60 + 0, "Support", ACTIVITY_WORK},
-  {17 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Evening sit", ACTIVITY_MEDITATION},
-  {20 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(5 * 60 + 30, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(6 * 60 + 0, "Morning sit"),
+  ACT(7 * 60 + 0, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 45, "Service Prep", ACTIVITY_WORK),
+  ACT(9 * 60 + 0, "Work Period", ACTIVITY_WORK),
+  ACT(12 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(13 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT(14 * 60 + 0, "Support", ACTIVITY_WORK),
+  ACT(17 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Evening sit"),
+  ACT(20 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_zero[] = {
-  {5 * 60 + 30, "Wake up", ACTIVITY_OTHER},
-  {6 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {7 * 60 + 0, "Breakfast", ACTIVITY_MEAL},
-  {8 * 60 + 0, "Service Work", ACTIVITY_WORK},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Rest", ACTIVITY_REST},
-  {13 * 60 + 30, "Registration", ACTIVITY_WORK},
-  {16 * 60 + 0, "Prep", ACTIVITY_WORK},
-  {18 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {19 * 60 + 30, "Orientation", ACTIVITY_INFO},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(5 * 60 + 30, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(6 * 60 + 0, "Meditation"),
+  ACT(7 * 60 + 0, "Breakfast", ACTIVITY_MEAL),
+  ACT(8 * 60 + 0, "Service Work", ACTIVITY_WORK),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT(13 * 60 + 30, "Registration", ACTIVITY_WORK),
+  ACT(16 * 60 + 0, "Prep", ACTIVITY_WORK),
+  ACT(18 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT(19 * 60 + 30, "Orientation", ACTIVITY_INFO),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_one[] = {
-  {4 * 60 + 30, "Wake up", ACTIVITY_OTHER},
-  {5 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 30, "Kitchen", ACTIVITY_WORK},
-  {9 * 60 + 30, "Service Work", ACTIVITY_WORK},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Rest", ACTIVITY_REST},
-  {13 * 60 + 0, "Service Work", ACTIVITY_WORK},
-  {17 * 60 + 0, "Tea", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Service Work", ACTIVITY_WORK},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(5 * 60 + 0, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 30, "Kitchen", ACTIVITY_WORK),
+  ACT(9 * 60 + 30, "Service Work", ACTIVITY_WORK),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT(13 * 60 + 0, "Service Work", ACTIVITY_WORK),
+  ACT(17 * 60 + 0, "Tea", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Meditation"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT(20 * 60 + 15, "Service Work", ACTIVITY_WORK),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_four[] = {
-  {4 * 60 + 30, "Wake up", ACTIVITY_OTHER},
-  {5 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 30, "Service Work", ACTIVITY_WORK},
-  {10 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Rest", ACTIVITY_REST},
-  {13 * 60 + 0, "Support", ACTIVITY_WORK},
-  {17 * 60 + 0, "Tea", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Service Work", ACTIVITY_WORK},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(5 * 60 + 0, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 30, "Service Work", ACTIVITY_WORK),
+  ACT(10 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT(13 * 60 + 0, "Support", ACTIVITY_WORK),
+  ACT(17 * 60 + 0, "Tea", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Meditation"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT(20 * 60 + 15, "Service Work", ACTIVITY_WORK),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_ten[] = {
-  {4 * 60 + 30, "Wake up", ACTIVITY_OTHER},
-  {5 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {7 * 60 + 30, "Service Work", ACTIVITY_WORK},
-  {10 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 0, "Rest", ACTIVITY_REST},
-  {13 * 60 + 30, "Support", ACTIVITY_WORK},
-  {17 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Meditation", ACTIVITY_MEDITATION},
-  {19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE},
-  {20 * 60 + 15, "Rest", ACTIVITY_REST},
-  {22 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(5 * 60 + 0, "Meditation"),
+  ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(7 * 60 + 30, "Service Work", ACTIVITY_WORK),
+  ACT(10 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 0, "Rest", ACTIVITY_REST),
+  ACT(13 * 60 + 30, "Support", ACTIVITY_WORK),
+  ACT(17 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_MED(18 * 60 + 0, "Meditation"),
+  ACT(19 * 60 + 0, "Discourse", ACTIVITY_DISCOURSE),
+  ACT(20 * 60 + 15, "Rest", ACTIVITY_REST),
+  ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 static const Activity k_server_day_eleven[] = {
-  {5 * 60 + 0, "Wake up", ACTIVITY_OTHER},
-  {5 * 60 + 30, "Meditation", ACTIVITY_MEDITATION},
-  {6 * 60 + 30, "Cleaning", ACTIVITY_WORK},
-  {7 * 60 + 30, "Breakfast", ACTIVITY_MEAL},
-  {8 * 60 + 30, "Pack", ACTIVITY_OTHER},
-  {10 * 60 + 0, "Meeting", ACTIVITY_INFO},
-  {11 * 60 + 0, "Lunch", ACTIVITY_MEAL},
-  {12 * 60 + 30, "Rest", ACTIVITY_REST},
-  {14 * 60 + 0, "Service Work", ACTIVITY_WORK},
-  {17 * 60 + 0, "Dinner", ACTIVITY_MEAL},
-  {18 * 60 + 0, "Metta", ACTIVITY_MEDITATION},
-  {20 * 60 + 0, "Lights out", ACTIVITY_SLEEP},
+  ACT(5 * 60 + 0, "Wake up", ACTIVITY_OTHER),
+  ACT_MED(5 * 60 + 30, "Meditation"),
+  ACT(6 * 60 + 30, "Cleaning", ACTIVITY_WORK),
+  ACT(7 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
+  ACT(8 * 60 + 30, "Pack", ACTIVITY_OTHER),
+  ACT(10 * 60 + 0, "Meeting", ACTIVITY_INFO),
+  ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
+  ACT(12 * 60 + 30, "Rest", ACTIVITY_REST),
+  ACT(14 * 60 + 0, "Service Work", ACTIVITY_WORK),
+  ACT(17 * 60 + 0, "Dinner", ACTIVITY_MEAL),
+  ACT_METTA(18 * 60 + 0, "Metta"),
+  ACT(20 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
 typedef struct {
-  int day;
+  DayType day_type;
   const Activity *activities;
   size_t count;
-} DayTable;
+} DayTypeTable;
 
-static DaySchedule schedule_from_table(const DayTable *table, size_t count, int day) {
+static DaySchedule schedule_from_daytype(const DayTypeTable *table, size_t count, DayType day_type) {
   for (size_t i = 0; i < count; i++) {
-    if (table[i].day == day) {
+    if (table[i].day_type == day_type) {
       return (DaySchedule){
         .activities = table[i].activities,
         .count = table[i].count,
@@ -226,40 +230,82 @@ static DaySchedule schedule_from_table(const DayTable *table, size_t count, int 
   };
 }
 
-DaySchedule schedule_get_day(CourseType course_type, CourseRole role, int day) {
+DayType schedule_get_day_type(CourseType course_type, int day) {
   if (course_type != COURSE_TYPE_TEN_DAY) {
-    return (DaySchedule){
-      .activities = k_student_day_one,
-      .count = ARRAY_LENGTH(k_student_day_one),
-    };
+    return DAYTYPE_ANAPANA;
   }
 
-  if (day == 12) {
-    day = -1;
+  if (day <= -1 || day >= 12) {
+    return DAYTYPE_PRE_COURSE;
   }
+
+  if (day == 0) {
+    return DAYTYPE_ARRIVAL;
+  }
+
+  if (day >= 1 && day <= 3) {
+    return DAYTYPE_ANAPANA;
+  }
+
+  if (day == 4) {
+    return DAYTYPE_TRANSITION;
+  }
+
+  if (day >= 5 && day <= 9) {
+    return DAYTYPE_VIPASSANA;
+  }
+
+  if (day == 10) {
+    return DAYTYPE_METTA;
+  }
+
+  return DAYTYPE_DEPARTURE;
+}
+
+MeditationType schedule_meditation_for_day(DayType day_type) {
+  switch (day_type) {
+    case DAYTYPE_ANAPANA:
+    case DAYTYPE_ARRIVAL:
+    case DAYTYPE_PRE_COURSE:
+      return MEDITATION_ANAPANA;
+    case DAYTYPE_TRANSITION:
+    case DAYTYPE_VIPASSANA:
+      return MEDITATION_VIPASSANA;
+    case DAYTYPE_METTA:
+    case DAYTYPE_DEPARTURE:
+      return MEDITATION_METTA;
+    default:
+      return MEDITATION_NONE;
+  }
+}
+
+DaySchedule schedule_get_day(CourseType course_type, CourseRole role, int day) {
+  DayType day_type = schedule_get_day_type(course_type, day);
 
   if (role == COURSE_ROLE_SERVER) {
-    static const DayTable k_server_table[] = {
-      {-1, k_server_day_minus_one, ARRAY_LENGTH(k_server_day_minus_one)},
-      {0, k_server_day_zero, ARRAY_LENGTH(k_server_day_zero)},
-      {1, k_server_day_one, ARRAY_LENGTH(k_server_day_one)},
-      {4, k_server_day_four, ARRAY_LENGTH(k_server_day_four)},
-      {10, k_server_day_ten, ARRAY_LENGTH(k_server_day_ten)},
-      {11, k_server_day_eleven, ARRAY_LENGTH(k_server_day_eleven)},
+    static const DayTypeTable k_server_table[] = {
+      {DAYTYPE_PRE_COURSE, k_server_day_minus_one, ARRAY_LENGTH(k_server_day_minus_one)},
+      {DAYTYPE_ARRIVAL, k_server_day_zero, ARRAY_LENGTH(k_server_day_zero)},
+      {DAYTYPE_ANAPANA, k_server_day_one, ARRAY_LENGTH(k_server_day_one)},
+      {DAYTYPE_TRANSITION, k_server_day_four, ARRAY_LENGTH(k_server_day_four)},
+      {DAYTYPE_VIPASSANA, k_server_day_one, ARRAY_LENGTH(k_server_day_one)},
+      {DAYTYPE_METTA, k_server_day_ten, ARRAY_LENGTH(k_server_day_ten)},
+      {DAYTYPE_DEPARTURE, k_server_day_eleven, ARRAY_LENGTH(k_server_day_eleven)},
     };
-    return schedule_from_table(k_server_table, ARRAY_LENGTH(k_server_table), day);
+    return schedule_from_daytype(k_server_table, ARRAY_LENGTH(k_server_table), day_type);
   }
 
-  static const DayTable k_student_table[] = {
-    {-1, k_student_day_minus_one, ARRAY_LENGTH(k_student_day_minus_one)},
-    {0, k_student_day_zero, ARRAY_LENGTH(k_student_day_zero)},
-    {1, k_student_day_one, ARRAY_LENGTH(k_student_day_one)},
-    {4, k_student_day_four, ARRAY_LENGTH(k_student_day_four)},
-    {10, k_student_day_ten, ARRAY_LENGTH(k_student_day_ten)},
-    {11, k_student_day_eleven, ARRAY_LENGTH(k_student_day_eleven)},
+  static const DayTypeTable k_student_table[] = {
+    {DAYTYPE_PRE_COURSE, k_student_day_minus_one, ARRAY_LENGTH(k_student_day_minus_one)},
+    {DAYTYPE_ARRIVAL, k_student_day_zero, ARRAY_LENGTH(k_student_day_zero)},
+    {DAYTYPE_ANAPANA, k_student_day_one, ARRAY_LENGTH(k_student_day_one)},
+    {DAYTYPE_TRANSITION, k_student_day_four, ARRAY_LENGTH(k_student_day_four)},
+    {DAYTYPE_VIPASSANA, k_student_day_one, ARRAY_LENGTH(k_student_day_one)},
+    {DAYTYPE_METTA, k_student_day_ten, ARRAY_LENGTH(k_student_day_ten)},
+    {DAYTYPE_DEPARTURE, k_student_day_eleven, ARRAY_LENGTH(k_student_day_eleven)},
   };
 
-  return schedule_from_table(k_student_table, ARRAY_LENGTH(k_student_table), day);
+  return schedule_from_daytype(k_student_table, ARRAY_LENGTH(k_student_table), day_type);
 }
 
 int schedule_current_index(const DaySchedule *schedule, int minutes) {
@@ -338,5 +384,18 @@ const char *schedule_kind_label(ActivityKind kind) {
     case ACTIVITY_OTHER:
     default:
       return "Other";
+  }
+}
+
+const char *schedule_meditation_label(MeditationType meditation) {
+  switch (meditation) {
+    case MEDITATION_ANAPANA:
+      return "Anapana";
+    case MEDITATION_VIPASSANA:
+      return "Vipassana";
+    case MEDITATION_METTA:
+      return "Metta";
+    default:
+      return "";
   }
 }

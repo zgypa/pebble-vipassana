@@ -10,22 +10,29 @@ typedef struct {
   int year;
   int month;
   int day;
-} DateParts;
+  int hour;
+  int minute;
+} DateTimeParts;
 
 typedef struct {
-  DateParts course_start;
-  DateParts service_start;
+  DateTimeParts course_start;
+  DateTimeParts service_start;
   CourseType course_type;
   CourseRole course_role;
-  int pagoda_cell;
-  int dining_hall;
-  int cushion;
+  char room[8];
+  char pagoda_cell[8];
+  char dining_hall[8];
+  char cushion[8];
 } Settings;
 
 void settings_load(Settings *settings);
 void settings_save(const Settings *settings);
 void settings_set_defaults(Settings *settings);
-DateParts settings_date_from_ymd(int ymd);
-int settings_date_to_ymd(DateParts date);
-time_t settings_date_to_time(DateParts date);
-void settings_date_from_time(DateParts *date, time_t timestamp);
+void settings_copy_string(char *dest, size_t dest_size, const char *src);
+DateTimeParts settings_datetime_from_iso(const char *value);
+void settings_datetime_to_iso(DateTimeParts date, char *buffer, size_t buffer_size);
+int settings_date_to_ymd(DateTimeParts date);
+int settings_time_to_hm(DateTimeParts date);
+DateTimeParts settings_datetime_from_parts(int ymd, int hm);
+time_t settings_datetime_to_time(DateTimeParts date);
+void settings_datetime_from_time(DateTimeParts *date, time_t timestamp);
