@@ -1,4 +1,5 @@
 {
+  # Nix flake defining a repeatable dev shell for the Pebble SDK toolchain.
   description = "Pebble Vipassana dev environment";
 
   inputs = {
@@ -22,6 +23,7 @@
           packages = with pkgs; [
             clang
             curl
+            gcc
             git
             gnumake
             libpng

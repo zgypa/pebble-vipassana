@@ -1,5 +1,7 @@
 # Architecture
 
+This document explains the planned components and data flow for the watchface.
+
 ## Goals
 
 - Provide a minimal, distraction-free watchface for Vipassana courses.

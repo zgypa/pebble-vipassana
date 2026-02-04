@@ -1,5 +1,7 @@
 # Development
 
+This guide describes the local SDK setup and build workflow for the repo.
+
 ## Nix + direnv
 
 1. Install direnv and allow the shell.

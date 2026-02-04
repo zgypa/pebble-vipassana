@@ -1,3 +1,4 @@
+// Main watchface entrypoint, kept minimal as a baseline for features.
 #include <pebble.h>
 
 static Window *s_main_window;

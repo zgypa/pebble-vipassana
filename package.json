@@ -1,0 +1,29 @@
+{
+  "name": "pebble-vipassana",
+  "author": "Vipassana",
+  "description": "Pebble watchface project metadata and build configuration.",
+  "version": "0.1.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Pebble Vipassana",
+    "uuid": "5b1ec9c0-1b6e-4f3f-9db5-3bfe1b0deaf5",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": []
+    }
+  }
+}
