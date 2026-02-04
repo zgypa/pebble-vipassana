@@ -4,7 +4,7 @@
   "longName": "Pebble Vipassana",
   "companyName": "Vipassana",
   "versionLabel": "0.1.0",
-  "sdkVersion": "4",
+  "sdkVersion": "3",
   "targetPlatforms": [
     "aplite",
     "basalt",
