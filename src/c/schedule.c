@@ -31,7 +31,7 @@ static const Activity k_student_daytype_arrival[] = {
   ACT(11 * 60 + 0, "Lunch", ACTIVITY_MEAL),
   ACT_MED(13 * 60 + 0, "Group Sitting"),
   ACT(14 * 60 + 0, "Registration", ACTIVITY_WORK),
-  ACT(14 * 60 + 30, "Food Preparations", ACTIVITY_WORK),
+  ACT(14 * 60 + 30, "Meditation in Room", ACTIVITY_WORK),
   ACT(15 * 60 + 30, "Kitchen Meeting", ACTIVITY_INFO),
   ACT(18 * 60 + 0, "Dinner", ACTIVITY_MEAL),
   ACT(19 * 60 + 0, "Information", ACTIVITY_INFO),

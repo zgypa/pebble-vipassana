@@ -84,10 +84,35 @@ static void format_duration_hm(int minutes, char *buffer, size_t buffer_size) {
   snprintf(buffer, buffer_size, "%02d:%02d", hours, mins);
 }
 
-static int days_between(time_t start, time_t end) {
-  time_t start_day = start / 86400;
-  time_t end_day = end / 86400;
-  return (int)(end_day - start_day);
+// Calculate days between two calendar dates (ignoring time of day)
+// Returns positive if end is after start, negative if before
+static int days_between_dates(int start_year, int start_month, int start_day,
+                               int end_year, int end_month, int end_day) {
+  // Create tm structs for both dates at noon to avoid DST issues
+  struct tm start_tm = {
+    .tm_year = start_year - 1900,
+    .tm_mon = start_month - 1,
+    .tm_mday = start_day,
+    .tm_hour = 12,
+    .tm_min = 0,
+    .tm_sec = 0,
+    .tm_isdst = -1,
+  };
+  struct tm end_tm = {
+    .tm_year = end_year - 1900,
+    .tm_mon = end_month - 1,
+    .tm_mday = end_day,
+    .tm_hour = 12,
+    .tm_min = 0,
+    .tm_sec = 0,
+    .tm_isdst = -1,
+  };
+  
+  time_t start_time = mktime(&start_tm);
+  time_t end_time = mktime(&end_tm);
+  
+  // Divide by 86400 to get day difference
+  return (int)((end_time - start_time) / 86400);
 }
 
 static void append_location_number(char *buffer, size_t buffer_size, const char *label, const char *value) {
@@ -153,35 +178,55 @@ static void send_settings_to_phone(void) {
   app_message_outbox_send();
 }
 
-static AppMode determine_mode(time_t now,
-                              time_t service_start,
-                              time_t course_start,
+static AppMode determine_mode(int now_year, int now_month, int now_day,
+                              DateTimeParts service_start,
+                              DateTimeParts course_start,
                               int course_length_days,
                               int *out_days_until) {
-  time_t earliest = service_start < course_start ? service_start : course_start;
-  if (now < earliest) {
-    if (out_days_until) {
-      *out_days_until = days_between(now, earliest);
+  int days_until_service = days_between_dates(now_year, now_month, now_day,
+                                               service_start.year, service_start.month, service_start.day);
+  int days_until_course = days_between_dates(now_year, now_month, now_day,
+                                              course_start.year, course_start.month, course_start.day);
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Mode determination: days_until_service=%d, days_until_course=%d", 
+          days_until_service, days_until_course);
+  
+  // Check if we're in the course (course has started and hasn't ended yet)
+  // days_until_course <= 0 means course_start is today or in the past
+  if (days_until_course <= 0) {
+    int days_since_course_start = -days_until_course;
+    if (days_since_course_start <= course_length_days) {
+      // We're in the course period
+      if (out_days_until) {
+        *out_days_until = course_length_days - days_since_course_start;
+      }
+      return MODE_COURSE;
     }
-    return earliest == service_start ? MODE_PRE_SERVICE : MODE_PRE_COURSE;
+    // Course has ended
+    return MODE_POST;
   }
-
-  if (now >= service_start && now < course_start) {
+  
+  // Course is in the future (days_until_course > 0)
+  // Check if we're in service period (service started but course hasn't)
+  if (days_until_service <= 0 && days_until_course > 0) {
     if (out_days_until) {
-      *out_days_until = days_between(now, course_start);
+      *out_days_until = days_until_course;
     }
     return MODE_SERVICE;
   }
 
-  time_t course_end = course_start + course_length_days * 86400;
-  if (now >= course_start && now <= course_end) {
+  // Both are in the future - show whichever comes first
+  if (days_until_service < days_until_course) {
     if (out_days_until) {
-      *out_days_until = days_between(now, course_end);
+      *out_days_until = days_until_service;
     }
-    return MODE_COURSE;
+    return MODE_PRE_SERVICE;
+  } else {
+    if (out_days_until) {
+      *out_days_until = days_until_course;
+    }
+    return MODE_PRE_COURSE;
   }
-
-  return MODE_POST;
 }
 
 static int minutes_until_kind(const DaySchedule *schedule,
@@ -216,15 +261,26 @@ static void update_battery(void) {
 static void update_display(struct tm *tick_time) {
   update_battery();
 
-  time_t now = mktime(tick_time);
-  time_t course_start = settings_datetime_to_time(s_settings.course_start);
-  time_t service_start = settings_datetime_to_time(s_settings.service_start);
+  int now_year = tick_time->tm_year + 1900;
+  int now_month = tick_time->tm_mon + 1;
+  int now_day = tick_time->tm_mday;
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current date/time: %04d-%02d-%02d %02d:%02d (timezone: %s)", 
+          now_year, now_month, now_day, tick_time->tm_hour, tick_time->tm_min, 
+          tick_time->tm_zone ? tick_time->tm_zone : "unknown");
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Course start: %04d-%02d-%02d %02d:%02d", 
+          s_settings.course_start.year, s_settings.course_start.month, s_settings.course_start.day,
+          s_settings.course_start.hour, s_settings.course_start.minute);
 
   int days_until = 0;
-  AppMode mode = determine_mode(now, service_start, course_start, 11, &days_until);
+  AppMode mode = determine_mode(now_year, now_month, now_day,
+                                s_settings.service_start, s_settings.course_start, 11, &days_until);
 
   if (mode == MODE_COURSE) {
-    int course_day = days_between(course_start, now);
+    int course_day = -days_between_dates(now_year, now_month, now_day,
+                                          s_settings.course_start.year, 
+                                          s_settings.course_start.month,
+                                          s_settings.course_start.day);
     int days_left = 11 - course_day;
     snprintf(s_day_buffer, sizeof(s_day_buffer), "Day %d / 11 (%d left)", course_day, days_left);
     text_layer_set_text(s_day_layer, s_day_buffer);
@@ -232,7 +288,15 @@ static void update_display(struct tm *tick_time) {
     DayType day_type = schedule_get_day_type(s_settings.course_type, course_day);
     DaySchedule schedule = schedule_get_day(s_settings.course_type, s_settings.course_role, course_day);
     int minutes_now = minutes_from_tm(tick_time);
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Day: %d, Minutes now: %d, Schedule count: %d", 
+            course_day, minutes_now, (int)schedule.count);
+    
     int current_index = schedule_current_index(&schedule, minutes_now);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Current index: %d, Activity: %s at %d min", 
+            current_index, schedule.activities[current_index].label, 
+            schedule.activities[current_index].minutes);
+    
     int next_index = schedule_next_index(&schedule, current_index);
 
     const Activity *current = &schedule.activities[current_index];
@@ -298,7 +362,12 @@ static void update_display(struct tm *tick_time) {
     }
     text_layer_set_text(s_countdown_layer, s_countdown_buffer);
   } else if (mode == MODE_SERVICE) {
-    int minutes_until_course = (int)((course_start - now) / 60);
+    // Calculate minutes until course start
+    int days_diff = days_between_dates(now_year, now_month, now_day,
+                                        s_settings.course_start.year,
+                                        s_settings.course_start.month,
+                                        s_settings.course_start.day);
+    int minutes_until_course = days_diff * 24 * 60;
     format_duration_hm(minutes_until_course, s_time_buffer, sizeof(s_time_buffer));
     text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];
@@ -315,7 +384,12 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_next_location_layer, "");
     text_layer_set_text(s_countdown_layer, "");
   } else if (mode == MODE_PRE_SERVICE) {
-    int minutes_until_service = (int)((service_start - now) / 60);
+    // Calculate minutes until service start
+    int days_diff = days_between_dates(now_year, now_month, now_day,
+                                        s_settings.service_start.year,
+                                        s_settings.service_start.month,
+                                        s_settings.service_start.day);
+    int minutes_until_service = days_diff * 24 * 60;
     format_duration_hm(minutes_until_service, s_time_buffer, sizeof(s_time_buffer));
     text_layer_set_text(s_time_layer, s_time_buffer);
     char service_buffer[24];
@@ -332,7 +406,12 @@ static void update_display(struct tm *tick_time) {
     text_layer_set_text(s_next_location_layer, "");
     text_layer_set_text(s_countdown_layer, "");
   } else if (mode == MODE_PRE_COURSE) {
-    int minutes_until_course = (int)((course_start - now) / 60);
+    // Calculate minutes until course start
+    int days_diff = days_between_dates(now_year, now_month, now_day,
+                                        s_settings.course_start.year,
+                                        s_settings.course_start.month,
+                                        s_settings.course_start.day);
+    int minutes_until_course = days_diff * 24 * 60;
     format_duration_hm(minutes_until_course, s_time_buffer, sizeof(s_time_buffer));
     text_layer_set_text(s_time_layer, s_time_buffer);
     char course_buffer[24];

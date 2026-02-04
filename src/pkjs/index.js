@@ -14,18 +14,20 @@ var keys = {
 var pendingConfigOpen = false;
 var watchSyncReceived = false;
 
-function isoToLocal(value) {
+function isoToDate(value) {
   if (!value) {
     return '';
   }
-  return value.replace(' ', 'T');
+  // Extract just the date part (YYYY-MM-DD)
+  return value.substring(0, 10);
 }
 
-function localToIso(value) {
+function dateToIso(value) {
   if (!value) {
     return '';
   }
-  return value.replace('T', ' ');
+  // Add time 00:00 to date-only input
+  return value + ' 00:00';
 }
 
 function getStored(key, fallback) {
@@ -63,11 +65,12 @@ function buildConfigHtml(values) {
     + '</style></head><body>'
     + '<h1>Pebble Vipassana</h1>'
     + '<div class="status" id="status"></div>'
+    + '<p style="font-size:11px;color:#666;margin-bottom:16px;">Set the date when you arrive at the course (Day 0). Time is automatically set to midnight.</p>'
     + '<form id="config">'
-    + '<label>Course start</label>'
-    + '<input type="datetime-local" name="courseStart" value="' + isoToLocal(values.courseStart) + '">' 
-    + '<label>Service start</label>'
-    + '<input type="datetime-local" name="serviceStart" value="' + isoToLocal(values.serviceStart) + '">' 
+    + '<label>Course start date (arrival day)</label>'
+    + '<input type="date" name="courseStart" value="' + isoToDate(values.courseStart) + '" required>' 
+    + '<label>Service start date</label>'
+    + '<input type="date" name="serviceStart" value="' + isoToDate(values.serviceStart) + '" required>' 
     + '<div class="row">'
     + '<div><label>Role</label>'
     + '<select name="courseRole">'
@@ -115,14 +118,19 @@ function buildConfigHtml(values) {
     + '    }, 500);'
     + '  }'
     + '}'
-    + 'function localToIso(value) {'
+    + 'function dateToIso(value) {'
     + '  if (!value) return "";'
-    + '  return value.replace("T", " ");'
+    + '  var result = value + " 00:00";'
+    + '  console.log("dateToIso: " + value + " -> " + result);'
+    + '  return result;'
     + '}'
     + 'document.getElementById("config").addEventListener("submit", function(e){'
     + '  e.preventDefault();'
-    + '  var data = {courseStart:localToIso(this.courseStart.value),' 
-    + '    serviceStart:localToIso(this.serviceStart.value),' 
+    + '  var courseStartDate = this.courseStart.value;'
+    + '  var serviceStartDate = this.serviceStart.value;'
+    + '  console.log("Form values - course:", courseStartDate, "service:", serviceStartDate);'
+    + '  var data = {courseStart:dateToIso(courseStartDate),' 
+    + '    serviceStart:dateToIso(serviceStartDate),' 
     + '    courseRole:this.courseRole.value,courseType:this.courseType.value,'
     + '    room:this.room.value,pagoda:this.pagoda.value,dining:this.dining.value,cushion:this.cushion.value};'
     + '  closeConfig(data);'
