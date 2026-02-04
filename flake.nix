@@ -25,10 +25,10 @@
             git
             gnumake
             libpng
+            nodejs
             pkg-config
-            python3
-            python3Packages.pip
-            python3Packages.virtualenv
+            python313
+            uv
             zlib
           ];
 
@@ -36,7 +36,11 @@
             export PEBBLE_PROJECT_ROOT="$PWD"
             export PEBBLE_SDK_HOME="$PWD/.pebble-sdk"
             export PEBBLE_TOOL_PATH="$PEBBLE_SDK_HOME/bin"
-            export PATH="$PEBBLE_TOOL_PATH:$PATH"
+            if [ -n "$XDG_BIN_HOME" ]; then
+              export PATH="$XDG_BIN_HOME:$PEBBLE_TOOL_PATH:$PATH"
+            else
+              export PATH="$HOME/.local/bin:$PEBBLE_TOOL_PATH:$PATH"
+            fi
             export PIP_DISABLE_PIP_VERSION_CHECK=1
           '';
         };
