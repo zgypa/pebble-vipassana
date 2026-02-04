@@ -5,7 +5,7 @@
 #define ACT_MED(time, text) {time, text, ACTIVITY_MEDITATION, MEDITATION_NONE}
 #define ACT_METTA(time, text) {time, text, ACTIVITY_MEDITATION, MEDITATION_METTA}
 
-static const Activity k_student_day_minus_one[] = {
+static const Activity k_student_daytype_pre_course[] = {
   ACT(5 * 60 + 55, "Chanting", ACTIVITY_OTHER),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
   ACT(7 * 60 + 0, "Meeting", ACTIVITY_INFO),
@@ -21,7 +21,7 @@ static const Activity k_student_day_minus_one[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_student_day_zero[] = {
+static const Activity k_student_daytype_arrival[] = {
   ACT(5 * 60 + 55, "Chanting", ACTIVITY_OTHER),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
   ACT(7 * 60 + 0, "Meeting", ACTIVITY_INFO),
@@ -39,7 +39,7 @@ static const Activity k_student_day_zero[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_student_day_one[] = {
+static const Activity k_student_daytype_anapana[] = {
   ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
   ACT_MED(4 * 60 + 30, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -58,7 +58,7 @@ static const Activity k_student_day_one[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_student_day_four[] = {
+static const Activity k_student_daytype_transition[] = {
   ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
   ACT_MED(4 * 60 + 30, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -77,7 +77,7 @@ static const Activity k_student_day_four[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_student_day_ten[] = {
+static const Activity k_student_daytype_metta[] = {
   ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
   ACT_MED(4 * 60 + 30, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -97,7 +97,7 @@ static const Activity k_student_day_ten[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_student_day_eleven[] = {
+static const Activity k_student_daytype_departure[] = {
   ACT(4 * 60 + 0, "Wake up", ACTIVITY_OTHER),
   ACT_MED(4 * 60 + 30, "Group Sitting"),
   ACT(6 * 60 + 30, "Cleaning", ACTIVITY_WORK),
@@ -117,7 +117,7 @@ static const Activity k_student_day_eleven[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_minus_one[] = {
+static const Activity k_server_daytype_pre_course[] = {
   ACT(5 * 60 + 30, "Wake up", ACTIVITY_OTHER),
   ACT_MED(6 * 60 + 0, "Morning sit"),
   ACT(7 * 60 + 0, "Breakfast", ACTIVITY_MEAL),
@@ -132,7 +132,7 @@ static const Activity k_server_day_minus_one[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_zero[] = {
+static const Activity k_server_daytype_arrival[] = {
   ACT(5 * 60 + 30, "Wake up", ACTIVITY_OTHER),
   ACT_MED(6 * 60 + 0, "Meditation"),
   ACT(7 * 60 + 0, "Breakfast", ACTIVITY_MEAL),
@@ -146,7 +146,7 @@ static const Activity k_server_day_zero[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_one[] = {
+static const Activity k_server_daytype_anapana[] = {
   ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
   ACT_MED(5 * 60 + 0, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -162,7 +162,7 @@ static const Activity k_server_day_one[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_four[] = {
+static const Activity k_server_daytype_transition[] = {
   ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
   ACT_MED(5 * 60 + 0, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -178,7 +178,7 @@ static const Activity k_server_day_four[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_ten[] = {
+static const Activity k_server_daytype_metta[] = {
   ACT(4 * 60 + 30, "Wake up", ACTIVITY_OTHER),
   ACT_MED(5 * 60 + 0, "Meditation"),
   ACT(6 * 60 + 30, "Breakfast", ACTIVITY_MEAL),
@@ -194,7 +194,7 @@ static const Activity k_server_day_ten[] = {
   ACT(22 * 60 + 0, "Lights out", ACTIVITY_SLEEP),
 };
 
-static const Activity k_server_day_eleven[] = {
+static const Activity k_server_daytype_departure[] = {
   ACT(5 * 60 + 0, "Wake up", ACTIVITY_OTHER),
   ACT_MED(5 * 60 + 30, "Meditation"),
   ACT(6 * 60 + 30, "Cleaning", ACTIVITY_WORK),
@@ -225,8 +225,8 @@ static DaySchedule schedule_from_daytype(const DayTypeTable *table, size_t count
     }
   }
   return (DaySchedule){
-    .activities = k_student_day_one,
-    .count = ARRAY_LENGTH(k_student_day_one),
+    .activities = k_student_daytype_anapana,
+    .count = ARRAY_LENGTH(k_student_daytype_anapana),
   };
 }
 
@@ -284,25 +284,25 @@ DaySchedule schedule_get_day(CourseType course_type, CourseRole role, int day) {
 
   if (role == COURSE_ROLE_SERVER) {
     static const DayTypeTable k_server_table[] = {
-      {DAYTYPE_PRE_COURSE, k_server_day_minus_one, ARRAY_LENGTH(k_server_day_minus_one)},
-      {DAYTYPE_ARRIVAL, k_server_day_zero, ARRAY_LENGTH(k_server_day_zero)},
-      {DAYTYPE_ANAPANA, k_server_day_one, ARRAY_LENGTH(k_server_day_one)},
-      {DAYTYPE_TRANSITION, k_server_day_four, ARRAY_LENGTH(k_server_day_four)},
-      {DAYTYPE_VIPASSANA, k_server_day_one, ARRAY_LENGTH(k_server_day_one)},
-      {DAYTYPE_METTA, k_server_day_ten, ARRAY_LENGTH(k_server_day_ten)},
-      {DAYTYPE_DEPARTURE, k_server_day_eleven, ARRAY_LENGTH(k_server_day_eleven)},
+      {DAYTYPE_PRE_COURSE, k_server_daytype_pre_course, ARRAY_LENGTH(k_server_daytype_pre_course)},
+      {DAYTYPE_ARRIVAL, k_server_daytype_arrival, ARRAY_LENGTH(k_server_daytype_arrival)},
+      {DAYTYPE_ANAPANA, k_server_daytype_anapana, ARRAY_LENGTH(k_server_daytype_anapana)},
+      {DAYTYPE_TRANSITION, k_server_daytype_transition, ARRAY_LENGTH(k_server_daytype_transition)},
+      {DAYTYPE_VIPASSANA, k_server_daytype_anapana, ARRAY_LENGTH(k_server_daytype_anapana)},
+      {DAYTYPE_METTA, k_server_daytype_metta, ARRAY_LENGTH(k_server_daytype_metta)},
+      {DAYTYPE_DEPARTURE, k_server_daytype_departure, ARRAY_LENGTH(k_server_daytype_departure)},
     };
     return schedule_from_daytype(k_server_table, ARRAY_LENGTH(k_server_table), day_type);
   }
 
   static const DayTypeTable k_student_table[] = {
-    {DAYTYPE_PRE_COURSE, k_student_day_minus_one, ARRAY_LENGTH(k_student_day_minus_one)},
-    {DAYTYPE_ARRIVAL, k_student_day_zero, ARRAY_LENGTH(k_student_day_zero)},
-    {DAYTYPE_ANAPANA, k_student_day_one, ARRAY_LENGTH(k_student_day_one)},
-    {DAYTYPE_TRANSITION, k_student_day_four, ARRAY_LENGTH(k_student_day_four)},
-    {DAYTYPE_VIPASSANA, k_student_day_one, ARRAY_LENGTH(k_student_day_one)},
-    {DAYTYPE_METTA, k_student_day_ten, ARRAY_LENGTH(k_student_day_ten)},
-    {DAYTYPE_DEPARTURE, k_student_day_eleven, ARRAY_LENGTH(k_student_day_eleven)},
+    {DAYTYPE_PRE_COURSE, k_student_daytype_pre_course, ARRAY_LENGTH(k_student_daytype_pre_course)},
+    {DAYTYPE_ARRIVAL, k_student_daytype_arrival, ARRAY_LENGTH(k_student_daytype_arrival)},
+    {DAYTYPE_ANAPANA, k_student_daytype_anapana, ARRAY_LENGTH(k_student_daytype_anapana)},
+    {DAYTYPE_TRANSITION, k_student_daytype_transition, ARRAY_LENGTH(k_student_daytype_transition)},
+    {DAYTYPE_VIPASSANA, k_student_daytype_anapana, ARRAY_LENGTH(k_student_daytype_anapana)},
+    {DAYTYPE_METTA, k_student_daytype_metta, ARRAY_LENGTH(k_student_daytype_metta)},
+    {DAYTYPE_DEPARTURE, k_student_daytype_departure, ARRAY_LENGTH(k_student_daytype_departure)},
   };
 
   return schedule_from_daytype(k_student_table, ARRAY_LENGTH(k_student_table), day_type);
