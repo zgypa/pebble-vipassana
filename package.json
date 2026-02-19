@@ -37,7 +37,14 @@
       "DEMO_CYCLE_SECONDS"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "type": "png",
+          "name": "ICON_MENU",
+          "file": "icon_menu.png",
+          "menuIcon": true
+        }
+      ]
     }
   }
 }
