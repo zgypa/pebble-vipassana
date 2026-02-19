@@ -2,6 +2,7 @@
 #include "settings.h"
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -14,6 +15,8 @@ enum {
   SETTINGS_KEY_PAGODA = 6,
   SETTINGS_KEY_DINING = 7,
   SETTINGS_KEY_CUSHION = 8,
+  SETTINGS_KEY_DEMO_ENABLED = 9,
+  SETTINGS_KEY_DEMO_CYCLE_SECONDS = 10,
 };
 
 void settings_copy_string(char *dest, size_t dest_size, const char *src) {
@@ -126,6 +129,8 @@ void settings_set_defaults(Settings *settings) {
   settings_copy_string(settings->pagoda_cell, sizeof(settings->pagoda_cell), "");
   settings_copy_string(settings->dining_hall, sizeof(settings->dining_hall), "");
   settings_copy_string(settings->cushion, sizeof(settings->cushion), "");
+  settings->demo_enabled = true;
+  settings->demo_cycle_seconds = 1;
 }
 
 void settings_load(Settings *settings) {
@@ -172,6 +177,14 @@ void settings_load(Settings *settings) {
   if (persist_exists(SETTINGS_KEY_CUSHION)) {
     persist_read_string(SETTINGS_KEY_CUSHION, settings->cushion, sizeof(settings->cushion));
   }
+
+  if (persist_exists(SETTINGS_KEY_DEMO_ENABLED)) {
+    settings->demo_enabled = persist_read_bool(SETTINGS_KEY_DEMO_ENABLED);
+  }
+
+  if (persist_exists(SETTINGS_KEY_DEMO_CYCLE_SECONDS)) {
+    settings->demo_cycle_seconds = persist_read_int(SETTINGS_KEY_DEMO_CYCLE_SECONDS);
+  }
 }
 
 void settings_save(const Settings *settings) {
@@ -185,4 +198,6 @@ void settings_save(const Settings *settings) {
   persist_write_string(SETTINGS_KEY_PAGODA, settings->pagoda_cell);
   persist_write_string(SETTINGS_KEY_DINING, settings->dining_hall);
   persist_write_string(SETTINGS_KEY_CUSHION, settings->cushion);
+  persist_write_bool(SETTINGS_KEY_DEMO_ENABLED, settings->demo_enabled);
+  persist_write_int(SETTINGS_KEY_DEMO_CYCLE_SECONDS, settings->demo_cycle_seconds);
 }

@@ -110,6 +110,10 @@ Error handling and behavior:
 - The watchface uses wall-clock (local) time; do not introduce UTC math.
 - Buffer sizes are tuned to UI text; increase when labels grow.
 - Settings keys must align between `appinfo.json` and `src/pkjs/index.js`.
+- **CRITICAL**: The watchface NEVER displays wall-clock calendar dates (year/month/day).
+  Only show course-relative information: day numbers (0-11), time until next activity,
+  and days remaining. The entire purpose of this app is to remove calendar distractions
+  during Vipassana courses.
 
 ## Project layout
 

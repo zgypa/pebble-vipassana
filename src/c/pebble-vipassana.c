@@ -185,6 +185,9 @@ static void send_settings_to_phone(void) {
   dict_write_cstring(iter, MESSAGE_KEY_PAGODA_CELL, s_settings.pagoda_cell);
   dict_write_cstring(iter, MESSAGE_KEY_DINING_HALL, s_settings.dining_hall);
   dict_write_cstring(iter, MESSAGE_KEY_CUSHION, s_settings.cushion);
+  int demo_enabled_int = s_settings.demo_enabled ? 1 : 0;
+  dict_write_int(iter, MESSAGE_KEY_DEMO_ENABLED, &demo_enabled_int, sizeof(int), true);
+  dict_write_int(iter, MESSAGE_KEY_DEMO_CYCLE_SECONDS, &s_settings.demo_cycle_seconds, sizeof(int), true);
 
   app_message_outbox_send();
 }
@@ -263,6 +266,34 @@ static int minutes_until_kind(const DaySchedule *schedule,
   return -1;
 }
 
+// Demo mode scenarios: test cases for different times/days
+typedef struct {
+  int day_offset;     // Days relative to course start (-1, 0, 1, etc.)
+  int hour;
+  int minute;
+  const char *description;
+} DemoScenario;
+
+static const DemoScenario k_demo_scenarios[] = {
+  {-1, 14, 0, "Day -1 (pre-course)"},
+  {0, 18, 0, "Day 0 arrival, before course starts"},
+  {0, 20, 30, "Day 0 after course begins"},
+  {1, 2, 21, "Day 1 at 02:21 (midnight bug test)"},
+  {1, 4, 5, "Day 1 at 04:05 (wake up)"},
+  {1, 6, 30, "Day 1 at 06:30 (breakfast)"},
+  {1, 7, 20, "Day 1 at 07:20 (between activities)"},
+  {1, 9, 1, "Day 1 at 09:01 (short break)"},
+  {4, 14, 0, "Day 4 at 14:00 (Vipassana teaching)"},
+  {4, 15, 30, "Day 4 at 15:30 (after teaching)"},
+  {10, 10, 15, "Day 10 at 10:15 (Metta day, silence ends)"},
+  {11, 7, 0, "Day 11 at 07:00 (departure/cleaning)"},
+};
+static const int k_demo_scenario_count = sizeof(k_demo_scenarios) / sizeof(k_demo_scenarios[0]);
+static int s_demo_current_scenario = 0;
+static AppTimer *s_demo_timer = NULL;
+
+static void demo_timer_callback(void *data);
+
 static void update_battery(void) {
   s_battery_state = battery_state_service_peek();
   snprintf(s_battery_buffer, sizeof(s_battery_buffer), "%d%%", s_battery_state.charge_percent);
@@ -271,6 +302,28 @@ static void update_battery(void) {
 
 static void update_display(struct tm *tick_time) {
   update_battery();
+
+  // Demo mode: override time with scenario
+  struct tm demo_time;
+  if (s_settings.demo_enabled && s_demo_current_scenario < k_demo_scenario_count) {
+    const DemoScenario *scenario = &k_demo_scenarios[s_demo_current_scenario];
+    
+    // Calculate demo date relative to course start
+    time_t course_start_time = settings_datetime_to_time(s_settings.course_start);
+    struct tm *course_start_tm = localtime(&course_start_time);
+    course_start_tm->tm_mday += scenario->day_offset;
+    course_start_tm->tm_hour = scenario->hour;
+    course_start_tm->tm_min = scenario->minute;
+    course_start_tm->tm_sec = 0;
+    course_start_tm->tm_isdst = -1;
+    mktime(course_start_tm);
+    
+    demo_time = *course_start_tm;
+    tick_time = &demo_time;
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Demo mode: scenario %d/%d - %s", 
+            s_demo_current_scenario + 1, k_demo_scenario_count, scenario->description);
+  }
 
   int now_year = tick_time->tm_year + 1900;
   int now_month = tick_time->tm_mon + 1;
@@ -308,13 +361,14 @@ static void update_display(struct tm *tick_time) {
     
     int next_index = schedule_next_index(&schedule, current_index);
 
+    bool before_first_activity = minutes_now < schedule.activities[0].minutes;
     DaySchedule next_schedule = schedule;
-    if (current_index == (int)schedule.count - 1) {
+    if (current_index == (int)schedule.count - 1 && !before_first_activity) {
       next_schedule = schedule_get_day(s_settings.course_type, s_settings.course_role, course_day + 1);
     }
     const Activity *next = &next_schedule.activities[next_index];
     int minutes_until_next = next->minutes - minutes_now;
-    if (current_index == (int)schedule.count - 1 || minutes_until_next < 0) {
+    if (!before_first_activity && (current_index == (int)schedule.count - 1 || minutes_until_next < 0)) {
       minutes_until_next = (24 * 60 - minutes_now) + next->minutes;
     }
 
@@ -424,7 +478,30 @@ static void update_display(struct tm *tick_time) {
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  update_display(tick_time);
+  // In demo mode, ignore system tick
+  if (!s_settings.demo_enabled) {
+    update_display(tick_time);
+  }
+}
+
+static void demo_timer_callback(void *data) {
+  if (!s_settings.demo_enabled) {
+    s_demo_timer = NULL;
+    return;
+  }
+  
+  // Advance to next scenario
+  s_demo_current_scenario = (s_demo_current_scenario + 1) % k_demo_scenario_count;
+  
+  // Update display with current scenario
+  time_t now = time(NULL);
+  struct tm *tick_time = localtime(&now);
+  if (tick_time) {
+    update_display(tick_time);
+  }
+  
+  // Schedule next demo cycle
+  s_demo_timer = app_timer_register(s_settings.demo_cycle_seconds * 1000, demo_timer_callback, NULL);
 }
 
 static void battery_handler(BatteryChargeState state) {
@@ -433,7 +510,25 @@ static void battery_handler(BatteryChargeState state) {
 }
 
 static void settings_changed(const Settings *settings) {
+  bool demo_was_enabled = s_settings.demo_enabled;
   s_settings = *settings;
+  
+  // Start or stop demo timer based on setting
+  if (s_settings.demo_enabled && !demo_was_enabled) {
+    // Start demo mode
+    s_demo_current_scenario = 0;
+    if (s_demo_timer) {
+      app_timer_cancel(s_demo_timer);
+    }
+    s_demo_timer = app_timer_register(100, demo_timer_callback, NULL);
+  } else if (!s_settings.demo_enabled && demo_was_enabled) {
+    // Stop demo mode
+    if (s_demo_timer) {
+      app_timer_cancel(s_demo_timer);
+      s_demo_timer = NULL;
+    }
+  }
+  
   time_t now = time(NULL);
   struct tm *tick_time = localtime(&now);
   if (tick_time) {
@@ -450,7 +545,12 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *pagoda = dict_find(iter, MESSAGE_KEY_PAGODA_CELL);
   Tuple *dining = dict_find(iter, MESSAGE_KEY_DINING_HALL);
   Tuple *cushion = dict_find(iter, MESSAGE_KEY_CUSHION);
+  Tuple *demo_enabled = dict_find(iter, MESSAGE_KEY_DEMO_ENABLED);
+  Tuple *demo_cycle = dict_find(iter, MESSAGE_KEY_DEMO_CYCLE_SECONDS);
   Tuple *request_sync = dict_find(iter, MESSAGE_KEY_REQUEST_SYNC);
+
+  bool demo_changed = false;
+  bool demo_was_enabled = s_settings.demo_enabled;
 
   if (course && course->value->cstring[0] != '\0') {
     s_settings.course_start = settings_datetime_from_iso(course->value->cstring);
@@ -476,9 +576,38 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if (cushion) {
     settings_copy_string(s_settings.cushion, sizeof(s_settings.cushion), cushion->value->cstring);
   }
+  if (demo_enabled) {
+    s_settings.demo_enabled = demo_enabled->value->int32 != 0;
+    demo_changed = true;
+  }
+  if (demo_cycle) {
+    s_settings.demo_cycle_seconds = demo_cycle->value->int32;
+    if (s_settings.demo_cycle_seconds < 1) {
+      s_settings.demo_cycle_seconds = 1;
+    }
+  }
 
-  if (course || service || course_type || course_role || room || pagoda || dining || cushion) {
+  if (course || service || course_type || course_role || room || pagoda || dining || cushion || demo_enabled || demo_cycle) {
     settings_save(&s_settings);
+    
+    // Handle demo mode start/stop
+    if (demo_changed) {
+      if (s_settings.demo_enabled && !demo_was_enabled) {
+        // Start demo mode
+        s_demo_current_scenario = 0;
+        if (s_demo_timer) {
+          app_timer_cancel(s_demo_timer);
+        }
+        s_demo_timer = app_timer_register(100, demo_timer_callback, NULL);
+      } else if (!s_settings.demo_enabled && demo_was_enabled) {
+        // Stop demo mode
+        if (s_demo_timer) {
+          app_timer_cancel(s_demo_timer);
+          s_demo_timer = NULL;
+        }
+      }
+    }
+    
     time_t now = time(NULL);
     struct tm *tick_time = localtime(&now);
     if (tick_time) {
@@ -584,9 +713,19 @@ static void init(void) {
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   s_services_started = true;
+  
+  // Start demo mode if enabled
+  if (s_settings.demo_enabled) {
+    s_demo_current_scenario = 0;
+    s_demo_timer = app_timer_register(100, demo_timer_callback, NULL);
+  }
 }
 
 static void deinit(void) {
+  if (s_demo_timer) {
+    app_timer_cancel(s_demo_timer);
+    s_demo_timer = NULL;
+  }
   if (s_services_started) {
     tick_timer_service_unsubscribe();
     battery_state_service_unsubscribe();

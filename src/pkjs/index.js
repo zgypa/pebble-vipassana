@@ -9,6 +9,8 @@ var keys = {
   DINING_HALL: 10006,
   CUSHION: 10007,
   REQUEST_SYNC: 10008,
+  DEMO_ENABLED: 10009,
+  DEMO_CYCLE_SECONDS: 10010,
 };
 
 var pendingConfigOpen = false;
@@ -90,6 +92,15 @@ function buildConfigHtml(values) {
     + '<input type="text" name="dining" value="' + values.dining + '" placeholder="B12">'
     + '<label>Dhamma hall cushion</label>'
     + '<input type="text" name="cushion" value="' + values.cushion + '" placeholder="C3">'
+    + '<div class="row">'
+    + '<div><label>Demo Mode</label>'
+    + '<select name="demoEnabled">'
+    + '<option value="1"' + (values.demoEnabled === '1' ? ' selected' : '') + '>Enabled</option>'
+    + '<option value="0"' + (values.demoEnabled === '0' ? ' selected' : '') + '>Disabled</option>'
+    + '</select></div>'
+    + '<div><label>Demo Cycle (seconds)</label>'
+    + '<input type="number" name="demoCycleSeconds" value="' + values.demoCycleSeconds + '" min="1" max="60"></div>'
+    + '</div>'
     + '<button type="submit" id="saveBtn">Save</button>'
     + '<button type="button" class="sync-btn" id="syncBtn">Sync from Watch</button>'
     + '</form>'
@@ -132,7 +143,8 @@ function buildConfigHtml(values) {
     + '  var data = {courseStart:dateToIso(courseStartDate),' 
     + '    serviceStart:dateToIso(serviceStartDate),' 
     + '    courseRole:this.courseRole.value,courseType:this.courseType.value,'
-    + '    room:this.room.value,pagoda:this.pagoda.value,dining:this.dining.value,cushion:this.cushion.value};'
+    + '    room:this.room.value,pagoda:this.pagoda.value,dining:this.dining.value,cushion:this.cushion.value,'
+    + '    demoEnabled:this.demoEnabled.value,demoCycleSeconds:this.demoCycleSeconds.value};'
     + '  closeConfig(data);'
     + '});'
     + 'document.getElementById("syncBtn").addEventListener("click", function(){'
@@ -164,6 +176,8 @@ function openConfig() {
     pagoda: getStored('pagoda', ''),
     dining: getStored('dining', ''),
     cushion: getStored('cushion', ''),
+    demoEnabled: getStored('demoEnabled', '1'),
+    demoCycleSeconds: getStored('demoCycleSeconds', '1'),
   };
   console.log('Config values from localStorage:', values);
   var html = buildConfigHtml(values);
@@ -181,6 +195,8 @@ function sendSettings(data) {
   message[keys.PAGODA_CELL] = data.pagoda || '';
   message[keys.DINING_HALL] = data.dining || '';
   message[keys.CUSHION] = data.cushion || '';
+  message[keys.DEMO_ENABLED] = parseInt(data.demoEnabled || '1', 10);
+  message[keys.DEMO_CYCLE_SECONDS] = parseInt(data.demoCycleSeconds || '1', 10);
   Pebble.sendAppMessage(message,
     function() {
       console.log('Settings sent to watch successfully');
@@ -210,6 +226,8 @@ Pebble.addEventListener('webviewclosed', function(e) {
     saveStored('pagoda', data.pagoda || '');
     saveStored('dining', data.dining || '');
     saveStored('cushion', data.cushion || '');
+    saveStored('demoEnabled', data.demoEnabled || '1');
+    saveStored('demoCycleSeconds', data.demoCycleSeconds || '1');
     console.log('Sending settings to watch');
     sendSettings(data);
   } catch (err) {
@@ -246,8 +264,12 @@ Pebble.addEventListener('appmessage', function(e) {
   if (payload[keys.CUSHION] !== undefined) {
     saveStored('cushion', payload[keys.CUSHION]);
   }
-  watchSyncReceived = true;
-  console.log('Settings synced from watch to localStorage');
+  if (payload[keys.DEMO_ENABLED] !== undefined) {
+    saveStored('demoEnabled', String(payload[keys.DEMO_ENABLED]));
+  }
+  if (payload[keys.DEMO_CYCLE_SECONDS] !== undefined) {
+    saveStored('demoCycleSeconds', String(payload[keys.DEMO_CYCLE_SECONDS]));
+  }
 });
 
 Pebble.addEventListener('ready', function() {

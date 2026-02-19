@@ -32,7 +32,9 @@
       "PAGODA_CELL",
       "DINING_HALL",
       "CUSHION",
-      "REQUEST_SYNC"
+      "REQUEST_SYNC",
+      "DEMO_ENABLED",
+      "DEMO_CYCLE_SECONDS"
     ],
     "resources": {
       "media": []

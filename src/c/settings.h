@@ -23,6 +23,8 @@ typedef struct {
   char pagoda_cell[8];
   char dining_hall[8];
   char cushion[8];
+  bool demo_enabled;
+  int demo_cycle_seconds;
 } Settings;
 
 void settings_load(Settings *settings);
