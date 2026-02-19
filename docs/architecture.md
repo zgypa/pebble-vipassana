@@ -11,38 +11,47 @@ This document explains the components and data flow for the watchface.
 ## Modules
 
 ### 1. Course Composition Engine (`schedule.c`)
+
 Maps course types to ordered day types and provides schedule lookups.
 
 **Key Functions:**
+
 - `schedule_get_day_type()` - Maps course day number to day type (ARRIVAL, ANAPANA, TRANSITION, VIPASSANA, METTA, DEPARTURE)
 - `schedule_get_day()` - Returns the activity schedule for a given course type, role, and day
 - `schedule_current_index()` - Finds the current activity based on minutes since midnight
 
 ### 2. Schedule Engine (`schedule.c`)
+
 Stores day-type timetables with activity times in minutes since midnight.
 
 **Data Structures:**
+
 - Activities stored as `{minutes, label, kind, meditation}` tuples
 - Separate schedules for Students vs Servers
 - Times are in minutes since midnight (e.g., `14 * 60 + 30` = 870 = 14:30)
 
 ### 3. Settings Sync (`settings.c` + `src/pkjs/index.js`)
+
 Handles configuration persistence and phone ↔ watch communication.
 
 **Storage:**
+
 - Watch persists settings using Pebble's `persist_*` API
 - Phone config page sends settings via AppMessage
 - Watch sends current settings back to phone on startup (for "Sync from Watch" feature)
 
 **Date/Time Handling:**
+
 - Dates stored as `{year, month, day, hour, minute}` structs
 - ISO format for phone communication: `"YYYY-MM-DD HH:MM"`
 - `settings_datetime_to_time()` uses `mktime()` to convert to time_t
 
 ### 4. Display Composition (`pebble-vipassana.c`)
+
 Renders the watchface UI with current and next activities.
 
 **Display Layers:**
+
 ```
 Y=0,  H=34  → Top line (Day/Left/Time)  - GOTHIC_28_BOLD
 Y=34, H=24  → Battery percentage        - GOTHIC_24_BOLD  
@@ -51,6 +60,7 @@ Y=138,H=20  → Next activity             - GOTHIC_18_BOLD
 ```
 
 **Update Cycle:**
+
 - Tick handler runs every minute
 - Calculates current day relative to course start
 - Looks up current and next activities from schedule
@@ -141,6 +151,7 @@ int days_between(time_t start, time_t end) {
 Unix timestamps represent absolute moments in UTC. When you divide by 86400 to get "days", the boundary is at midnight UTC, not midnight local time.
 
 **Example Problem (Old Code):**
+
 - Course starts: Feb 4, 2026 00:00 America/Chicago (UTC-6)
 - This is: Feb 4, 2026 06:00 UTC
 - Current time: Feb 4, 2026 14:18 Chicago = Feb 4, 2026 20:18 UTC
@@ -149,6 +160,7 @@ Unix timestamps represent absolute moments in UTC. When you divide by 86400 to g
 - Result: Wrong day number before 18:00!
 
 **Solution (Current Code):**
+
 - Store dates as `{year, month, day}` tuples
 - Compare calendar dates directly using `mktime()` at noon to avoid DST edge cases
 - Schedule times are minutes since midnight (timezone-agnostic)
@@ -169,6 +181,7 @@ static char s_session_buffer[48]; // Activity names can be long
 ### Text Wrapping
 
 Activity names can be long ("Meditation in Room"). The session layer uses:
+
 - Height: 64px (enough for 2 lines of GOTHIC_28_BOLD)
 - Overflow mode: `GTextOverflowModeTrailingEllipsis`
 - Center alignment
