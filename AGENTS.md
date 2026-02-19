@@ -107,11 +107,11 @@ Error handling and behavior:
 ## Domain-specific rules
 
 - Course scheduling data lives in `src/c/schedule.c`; keep times in minutes.
-- The watchface uses wall-clock (local) time; do not introduce UTC math.
+- The watchface uses (doesn't display it) wall-clock (local) time; do not introduce UTC math.
 - Buffer sizes are tuned to UI text; increase when labels grow.
 - Settings keys must align between `appinfo.json` and `src/pkjs/index.js`.
 - **CRITICAL**: The watchface NEVER displays wall-clock calendar dates (year/month/day).
-  Only show course-relative information: day numbers (0-11), time until next activity,
+  Only show course-relative information: day numbers (0-11), time until next activity, current day
   and days remaining. The entire purpose of this app is to remove calendar distractions
   during Vipassana courses.
 

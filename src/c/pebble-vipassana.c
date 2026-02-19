@@ -95,6 +95,67 @@ static void format_duration_compact(int minutes, char *buffer, size_t buffer_siz
   snprintf(buffer, buffer_size, "%d:%02d", hours, mins);
 }
 
+// Calculate remaining days with decimal fraction
+// Working day is 18h (04:00 to 22:00), excluding sleep (22:00 to 04:00)
+// Returns -1.0 if target is in the past
+static float calculate_remaining_days(int current_day, int current_minutes,
+                                      int target_day, int target_minutes) {
+  const int kWorkingMinutesPerDay = 18 * 60;  // 1080 minutes
+  const int kDayStartMinutes = 4 * 60;        // 04:00
+  const int kDayEndMinutes = 22 * 60;         // 22:00
+  
+  // If we're past the target, return -1
+  if (current_day > target_day) {
+    return -1.0f;
+  }
+  if (current_day == target_day && current_minutes >= target_minutes) {
+    return -1.0f;
+  }
+  
+  // Calculate working minutes remaining today
+  int working_minutes_left_today = 0;
+  if (current_minutes < kDayStartMinutes) {
+    // Before working hours start - full working day ahead
+    working_minutes_left_today = kWorkingMinutesPerDay;
+  } else if (current_minutes >= kDayEndMinutes) {
+    // After working hours end - no working time left today
+    working_minutes_left_today = 0;
+  } else {
+    // During working hours
+    working_minutes_left_today = kDayEndMinutes - current_minutes;
+  }
+  
+  // Calculate working minutes until target
+  int working_minutes_to_target = 0;
+  if (current_day == target_day) {
+    // Same day
+    if (target_minutes <= kDayEndMinutes && target_minutes >= kDayStartMinutes) {
+      working_minutes_to_target = target_minutes - current_minutes;
+      if (current_minutes < kDayStartMinutes) {
+        working_minutes_to_target = target_minutes - kDayStartMinutes;
+      }
+    }
+  } else {
+    // Multiple days
+    int full_days_between = target_day - current_day - 1;
+    int target_working_minutes = 0;
+    
+    if (target_minutes >= kDayStartMinutes && target_minutes <= kDayEndMinutes) {
+      target_working_minutes = target_minutes - kDayStartMinutes;
+    } else if (target_minutes > kDayEndMinutes) {
+      target_working_minutes = kWorkingMinutesPerDay;
+    }
+    
+    working_minutes_to_target = working_minutes_left_today +
+                                (full_days_between * kWorkingMinutesPerDay) +
+                                target_working_minutes;
+  }
+  
+  // Convert to days with one decimal place
+  float remaining_days = (float)working_minutes_to_target / (float)kWorkingMinutesPerDay;
+  return remaining_days;
+}
+
 // Calculate days between two calendar dates (ignoring time of day)
 // Returns positive if end is after start, negative if before
 static int days_between_dates(int start_year, int start_month, int start_day,
@@ -372,11 +433,49 @@ static void update_display(struct tm *tick_time) {
       minutes_until_next = (24 * 60 - minutes_now) + next->minutes;
     }
 
-    // Top line: "X/Y H:MM" (no words, just numbers and time)
+    // Calculate decimal remaining days countdown
+    // Noble silence ends at day 10, 10:10 (610 minutes) when Metta meditation ends
+    // Course ends at day 11, 08:50 (530 minutes - when bus leaves)
+    const int kNobleSilenceEndDay = 10;
+    const int kNobleSilenceEndMinutes = 10 * 60 + 10;  // 10:10
+    const int kCourseEndDay = 11;
+    const int kCourseEndMinutes = 8 * 60 + 50;  // 08:50
+    
+    float remaining_days_decimal = -1.0f;
+    bool noble_silence_ended = (course_day > kNobleSilenceEndDay) || 
+                                (course_day == kNobleSilenceEndDay && minutes_now >= kNobleSilenceEndMinutes);
+    
+    if (!noble_silence_ended) {
+      // Before noble silence ends - countdown to end of noble silence
+      remaining_days_decimal = calculate_remaining_days(course_day, minutes_now, 
+                                                         kNobleSilenceEndDay, kNobleSilenceEndMinutes);
+    } else {
+      // After noble silence ends - countdown to course end
+      remaining_days_decimal = calculate_remaining_days(course_day, minutes_now, 
+                                                         kCourseEndDay, kCourseEndMinutes);
+    }
+    
+    // Top line: "X/-Y.Z H:MM" where X=current day, -Y.Z=remaining days (negative with one decimal), H:MM=time to next
     char duration_buffer[16];
     format_duration_compact(minutes_until_next, duration_buffer, sizeof(duration_buffer));
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes until next: %d, Duration: '%s'", minutes_until_next, duration_buffer);
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%d/%d %s", course_day, days_left, duration_buffer);
+    
+    if (remaining_days_decimal >= 0.0f) {
+      // Pebble SDK doesn't support floating point in snprintf, so format manually
+      int whole = (int)remaining_days_decimal;
+      int decimal = (int)((remaining_days_decimal - (float)whole) * 10.0f + 0.5f);
+      if (decimal >= 10) {
+        whole += 1;
+        decimal = 0;
+      }
+      snprintf(s_time_buffer, sizeof(s_time_buffer), "%d/-%d.%d %s", course_day, whole, decimal, duration_buffer);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes until next: %d, Duration: '%s', Day: %d, Remaining: -%d.%d", 
+              minutes_until_next, duration_buffer, course_day, whole, decimal);
+    } else {
+      // Fallback to old format if calculation fails
+      snprintf(s_time_buffer, sizeof(s_time_buffer), "%d/%d %s", course_day, days_left, duration_buffer);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes until next: %d, Duration: '%s' (fallback mode)", 
+              minutes_until_next, duration_buffer);
+    }
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Top line text: '%s'", s_time_buffer);
     text_layer_set_text(s_time_layer, s_time_buffer);
 
