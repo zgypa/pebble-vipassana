@@ -15,6 +15,8 @@ During a 10-day Vipassana course, students maintain noble silence and follow a s
 - **Know what's next** at a glance
 - **Maintain mindfulness** with minimal, distraction-free design
 
+This is a **very first, minimal release**. It uses the official course schedule, so it is accurate and useful for roughly **65% of the course day**. It has been tested during a full **10-day course only**, and several key features (like **custom schedules**) are not yet implemented.
+
 ## Features
 
 ### Smart Time Display
@@ -169,7 +171,9 @@ After configuring settings:
 
 ## How the Countdown Works
 
-The decimal countdown shows **working time remaining** until key milestones:
+"The fourth day is over, you have six days left to work"... Ring a bell? So we
+made a counter for how many days days you have left to work. The decimal
+countdown shows **working time remaining** until key milestones:
 
 ### Working Day Calculation
 
@@ -303,6 +307,12 @@ Course schedules are in `src/c/schedule.c`:
 - **Compact time**: No leading zeros (5:42 not 05:42)
 - **Buffer sizes**: Carefully tuned to prevent truncation
 - **Battery-efficient**: Updates only when needed
+
+## Known Issues
+
+- This is a **minimal first release**; coverage is best for core schedule blocks and is usable for roughly **75% of the course**. The remaining time you will find the watchface to produce not so useful information.
+- The watchface uses the **official schedule only**; **custom schedules** are not supported yet. No short breaks, real lunch/breakfast times or check-ins, for example.
+- It has been tested during **one single full 10-day course** only. 
 
 ## Resources & Documentation
 
