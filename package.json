@@ -1,0 +1,50 @@
+{
+  "name": "pebble-vipassana",
+  "author": "Toni Magni",
+  "description": "Pebble watchface project metadata and build configuration.",
+  "version": "0.3.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Vipassana",
+    "uuid": "5b1ec9c0-1b6e-4f3f-9db5-3bfe1b0deaf5",
+    "sdkVersion": "3",
+    "configurable": true,
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "diorite",
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "COURSE_START",
+      "SERVICE_START",
+      "COURSE_TYPE",
+      "COURSE_ROLE",
+      "ROOM",
+      "PAGODA_CELL",
+      "DINING_HALL",
+      "CUSHION",
+      "REQUEST_SYNC",
+      "DEMO_ENABLED",
+      "DEMO_CYCLE_SECONDS"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "png",
+          "name": "ICON_MENU",
+          "file": "icon_menu.png",
+          "menuIcon": true
+        }
+      ]
+    },
+    "projectType": "native",
+    "capabilities": ["configurable"]
+  }
+}

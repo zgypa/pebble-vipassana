@@ -1,0 +1,10 @@
+# Ignore local build outputs, SDK downloads, and tooling state for a clean repo.
+.DS_Store
+.direnv/
+.pebble-sdk/
+.pebble-shims/
+.venv/
+.lock-waf*
+build/
+dist/
+pebble.log
