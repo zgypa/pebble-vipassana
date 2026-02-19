@@ -1,13 +1,14 @@
 days,time,activity,required_location,student
-0,,,,
-*,0400,Wake Up,Residence,*
-*,0430,Meditation,,*
-*,0555,Chanting,,*
-*,0630,Breakfast,Dining Hall,*
-*,0715,Rest,,*
+0,1400,Registration,Male Dining Room,*
+0,1945,Course Starts,Dhamma Hall,*
+1-11,0400,Wake Up,Residence,*
+1-11,0430,Meditation,,*
+1-10,0555,Chanting,,*
+1-10,0630,Breakfast,Dining Hall,*
+1-10,0715,Rest,,*
 5-10,0800,Aditthana Sitting,Dhamma Hall,*
 1-4,0800,Group Sitting,Dhamma Hall,*
-*,0900,Short Break,,*
+1-10,0900,Short Break,,*
 1-8,0915,Instructions,Dhamma Hall,*
 9,0915,Bhanga Instructions,Dhamma Hall,*
 10,0915,Metta Instructions,Dhamma Hall,*
@@ -16,9 +17,11 @@ days,time,activity,required_location,student
 2-8,0930,Meditation,,*
 9,1005,Meditation,,*
 "2,6",0930,Checkin,Dhamma Hall,old
+"2,6",0930,Meditation,,new
+"3,5,7",0930,Meditation,Dhamma Hall,old
 "3,5,7",0930,Checkin,Dhamma Hall,new
-*,1100,Lunch,Dining Hall,*
-*,1145,Rest,,*
+1-10,1100,Lunch,Dining Hall,*
+1-10,1145,Rest,,*
 "1-3,5-9",1200,Interviews,Dhamma Hall,*
 1-9,1300,Meditation,,*
 10,1300,Student Meeting,Male Dining Room,*
@@ -40,10 +43,10 @@ days,time,activity,required_location,student
 1-9,1730,Rest,,*
 1-3,1800,Group Sitting,Dhamma Hall,*
 4-10,1800,Aditthana Sitting,Dhamma Hall,*
-*,1900,Short Break,,*
-*,1915,Discourse,,*
-*,2015,Short Break,,*
-*,2030,Group Sitting,Dhamma Hall,*
-*,2100,Questions or Rest,,*
-*,2130,Wind Down,,*
-*,2200,Lights Out,,*
+1-10,1900,Short Break,,*
+1-10,1915,Discourse,,*
+1-10,2015,Short Break,,*
+1-10,2030,Group Sitting,Dhamma Hall,*
+1-10,2100,Questions or Rest,,*
+1-10,2130,Wind Down,,*
+1-10,2200,Lights Out,,*
