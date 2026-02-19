@@ -15,9 +15,7 @@
     "targetPlatforms": [
       "aplite",
       "basalt",
-      "chalk",
       "diorite",
-      "emery",
       "flint"
     ],
     "watchapp": {
@@ -45,6 +43,8 @@
           "menuIcon": true
         }
       ]
-    }
+    },
+    "projectType": "native",
+    "capabilities": ["configurable"]
   }
 }
